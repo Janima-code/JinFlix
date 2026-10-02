@@ -1,42 +1,28 @@
-
-import './App.css';
-import { Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Homepage from './pages/Homepage';
 import MovieDetailPage from './pages/MovieDetailPage';
 import SeriesDetailPage from './pages/SeriesDetailPage';
 import TrailerPage from './pages/TrailerPage';
-import StreamingPage from './pages/StreamingPage';
-import Footer from './components/footer';
+import WatchPage from './pages/WatchPage'; // New standalone watch page
 import { MediaStateProvider } from './context/MediaStateContext';
 
-function Browse({ mediaType }) {
-  return <Homepage mediaType={mediaType} />;
-}
-
-function SeriesDetail() {
-  return <SeriesDetailPage />;
-}
-
-function MovieDetail() {
-  return <MovieDetailPage mediaType="movie" />;
-}
-
-function App() {
+export default function App() {
   return (
     <MediaStateProvider>
       <Routes>
-        <Route path="/" element={<Homepage />} />
-        <Route path="/movies" element={<Browse mediaType="movie" />} />
-        <Route path="/series" element={<Browse mediaType="tv" />} />
-        <Route path="/series/:id" element={<SeriesDetail />} />
-        <Route path="/movie/:id" element={<MovieDetail />} />
-        <Route path="/tv/:id" element={<SeriesDetail />} />
+        <Route path="/" element={<Homepage mediaType="all" />} />
+        <Route path="/movies" element={<Homepage mediaType="movie" />} />
+        <Route path="/series" element={<Homepage mediaType="tv" />} />
+
+        {/* Detail Routes */}
+        <Route path="/movie/:id" element={<MovieDetailPage mediaType="movie" />} />
+        <Route path="/series/:id" element={<SeriesDetailPage />} />
+
+        {/* Standalone Player Routes */}
         <Route path="/trailer/:type/:id" element={<TrailerPage />} />
-        
+        <Route path="/watch/:type/:id" element={<WatchPage />} />
       </Routes>
-      <Footer />
-    </MediaStateProvider>
+      </MediaStateProvider>
+    
   );
 }
-
-export default App;

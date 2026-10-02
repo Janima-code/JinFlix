@@ -1,202 +1,140 @@
-.header-section {
-  min-height: 520px;
+.header-topbar-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 28px;
-  padding: 24px clamp(18px, 4vw, 60px) 40px;
+  padding: 12px clamp(16px, 4vw, 48px);
   box-sizing: border-box;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.7)),
-    url("https://i.postimg.cc/25b9n5nZ/Chat-GPT-Image-Sep-27-2026-08-16-50-PM.png");
-  background-position: top center;
-  background-size: cover;
-  background-repeat: no-repeat;
-}
-
-.header-section-compact {
-  min-height: 0;
-  gap: 0;
-  padding-bottom: 16px;
-  background: none;
+  background: linear-gradient(180deg, rgba(11, 11, 15, 0.85) 0%, rgba(11, 11, 15, 0.4) 75%, transparent 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow-x: hidden;
 }
 
 .header-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  width: min(1280px, 100%);
-  max-width: 1280px;
+  gap: 12px;
+  width: min(1320px, 100%);
   margin: 0 auto;
   flex-wrap: wrap;
-  padding: 12px 16px;
+  padding: 8px 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  background: rgba(11, 11, 15, 0.72);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 18, 24, 0.65);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .brand-block {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: #fff;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.04em;
   flex-shrink: 0;
-}
-
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: #e50914;
-  color: white;
-  font-weight: 800;
+  text-decoration: none;
 }
 
 .brand-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  object-fit: cover;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
   display: block;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
 .brand-name {
-  font-size: 1.1rem;
-}
-
-.brand-block {
-  text-decoration: none;
+  font-size: 2.3rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #d62626;
 }
 
 .primary-nav {
   display: flex;
+  
   align-items: center;
   gap: 6px;
 }
 
 .primary-nav a {
-  padding: 9px 12px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.92rem;
+  padding: 7px 14px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 1.0rem;
+  font-weight: 600;
   text-decoration: none;
-  border-radius: 6px;
-  transition: background-color 0.18s ease, color 0.18s ease;
+  border-radius: 999px;
+  transition: all 0.18s ease;
 }
 
 .primary-nav a:hover,
 .primary-nav a.active {
   color: #fff;
-  background: rgba(229, 9, 20, 0.82);
+  background: rgba(229, 9, 20, 0.85);
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+  gap: 12px;
 }
 
-.coffee-donate-link {
+.coffee-button-link {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ffdd00, #f7b500);
-  color: #111827;
-  text-decoration: none;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  box-shadow: 0 10px 24px rgba(247, 169, 40, 0.28);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.18s ease;
 }
 
-.coffee-donate-link:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(247, 169, 40, 0.34);
+.coffee-button-link:hover {
+  transform: scale(1.04);
 }
 
-.theme-toggle {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(14, 14, 18, 0.38);
-  color: #fff;
-  border-radius: 999px;
-  padding: 8px 14px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  min-width: 88px;
-  flex-shrink: 0;
-}
-
-.theme-toggle:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
-.header-content {
-  max-width: 600px;
-  color: #fff;
-  margin-left: 0;
-  padding-left: 0;
-  margin-top: 8px;
-}
-
-.header-content h1 {
-  margin: 0;
-  font-size: clamp(2.4rem, 5vw, 4.8rem);
-  line-height: 1.1;
-  font-weight: 800;
-  color: #e50914;
-  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
-}
-
-.header-content p {
-  margin: 16px 0 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 1.05rem;
-  line-height: 1.7;
-  max-width: 520px;
-  letter-spacing: 0.02em;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-}
-
-@media (max-width: 640px) {
-  .header-section {
-    padding: 18px 16px 28px;
+/* --- MOBILE RESPONSIVE FIXES --- */
+@media (max-width: 600px) {
+  .header-topbar-wrapper {
+    padding: 8px 12px;
   }
 
+  /* Stacks topbar items (brand on top, nav below) */
   .header-topbar {
-    justify-content: center;
-    border-radius: 16px;
-    padding: 10px 12px;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 16px; /* Replaces 999px pill border to fit vertical height */
   }
 
+  .brand-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 60px;
+  }
+
+  .brand-name {
+    font-size: 1.4rem;
+  }
+
+  /* Stacks navigation links vertically with a 2px gap */
   .primary-nav {
-    order: 3;
+    flex-direction: column;
+    align-items: center;
     width: 100%;
-    justify-content: center;
+    gap: 2px;
+    flex: 1;
   }
 
-  .header-content {
+  .primary-nav a {
+    width: 50px;
     text-align: center;
+    padding: 6px 12px; 
+    font-size: 1.2rem;
   }
-
-  .header-content p {
-    margin-left: auto;
-    margin-right: auto;
-  }
+   .header-actions{
+    margin-right: 20px;
+   }
+  
 }

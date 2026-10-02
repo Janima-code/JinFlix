@@ -1,3 +1,577 @@
 [
-    
+  {
+    "id": 1248832,
+    "tmdb_id": 1248832,
+    "media_type": "movie",
+    "title": "Digger",
+    "year": "2026",
+    "release_date": "2026-09-28",
+    "runtime": "129 min",
+    "genres": [
+      "Comedy",
+      "Drama"
+    ],
+    "genres_formatted": "Comedy, Drama",
+    "tagline": "A man. A plan. A meltdown.",
+    "overview": "The most powerful man in the world embarks on a frantic mission to prove he is humanity's savior before the disaster he's unleashed destroys everything.",
+    "vote_average": 7.4,
+    "rating": 7.4,
+    "vote_count": 24,
+    "poster": "https://image.tmdb.org/t/p/w500/1ATXKrIPJyKNwnJ6lcG088Sa6zi.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/original/b7t3r39Oll5qPxBKzLZ8eHMBD7l.jpg",
+    "trailer_key": "3KjN109cmPU",
+    "trailer_url": "https://www.youtube.com/watch?v=3KjN109cmPU",
+    "trailer_embed": "https://www.youtube-nocookie.com/embed/3KjN109cmPU",
+    "cast": [
+      {
+        "id": 500,
+        "name": "Tom Cruise",
+        "character": "Digger Rockwell / Curtis Markson",
+        "profile_path": "https://image.tmdb.org/t/p/w185/maf8PhSvDCdEwjEMbYfGpojR5RP.jpg"
+      },
+      {
+        "id": 53240,
+        "name": "Riz Ahmed",
+        "character": "Ganesh",
+        "profile_path": "https://image.tmdb.org/t/p/w185/1uP9RaX7BGVx7XGTEmwObBJJzsC.jpg"
+      },
+      {
+        "id": 1230,
+        "name": "John Goodman",
+        "character": "President Compson",
+        "profile_path": "https://image.tmdb.org/t/p/w185/yyYqoyKHO7hE1zpgEV2XlqYWcNV.jpg"
+      },
+      {
+        "id": 7152,
+        "name": "Sandra Hüller",
+        "character": "Emma",
+        "profile_path": "https://image.tmdb.org/t/p/w185/jQfKXVCPTH9KEnzHHU4QemCnlMe.jpg"
+      },
+      {
+        "id": 72873,
+        "name": "Michael Stuhlbarg",
+        "character": "Vice President",
+        "profile_path": "https://image.tmdb.org/t/p/w185/aYB3SQm3h6ZyAdlbGyiNfakjx56.jpg"
+      },
+      {
+        "id": 88124,
+        "name": "Jesse Plemons",
+        "character": "Kenny",
+        "profile_path": "https://image.tmdb.org/t/p/w185/og4I51GsuwohdPgoELOHVMMqMre.jpg"
+      },
+      {
+        "id": 31512,
+        "name": "Robert John Burke",
+        "character": "Fitzgerald",
+        "profile_path": "https://image.tmdb.org/t/p/w185/uWEaY5gypb6cp1bdUYG4uCKw4sK.jpg"
+      },
+      {
+        "id": 2121005,
+        "name": "Emma D'Arcy",
+        "character": "Lena",
+        "profile_path": "https://image.tmdb.org/t/p/w185/9Zlmb7VmtVCxkLq5yqFFRRxCaED.jpg"
+      },
+      {
+        "id": 39659,
+        "name": "Burn Gorman",
+        "character": "Amos",
+        "profile_path": "https://image.tmdb.org/t/p/w185/udgACYWqCSuu6nvtrSjmyU28B0V.jpg"
+      },
+      {
+        "id": 3115932,
+        "name": "Sophie Wilde",
+        "character": "Hannah",
+        "profile_path": "https://image.tmdb.org/t/p/w185/fMZvMsvTv9MYSC6LTNdIUaMGjIv.jpg"
+      }
+    ],
+    "legal_providers": [],
+    "status": "Released",
+    "original_language": "EN",
+    "budget": 0,
+    "revenue": 0
+  },
+  {
+    "id": 1492640,
+    "tmdb_id": 1492640,
+    "media_type": "movie",
+    "title": "UNABOMBER",
+    "year": "2026",
+    "release_date": "2026-09-25",
+    "runtime": "101 min",
+    "genres": [
+      "Thriller",
+      "Drama",
+      "Crime"
+    ],
+    "genres_formatted": "Thriller, Drama, Crime",
+    "tagline": "Where brilliance ends, the madness begins.",
+    "overview": "Follow Ted Kaczynski's transformation from Harvard prodigy into the infamous Unabomber. Subjected to controversial psychological experiments by Professor Henry Murray, Kaczynski's troubled past resurfaces decades later when his manhunt, led by FBI agent Joanne Miller, brings to light the chilling consequences of ambition and isolation.",
+    "vote_average": 6.717,
+    "rating": 6.7,
+    "vote_count": 249,
+    "poster": "https://image.tmdb.org/t/p/w500/39aMkR8Y5vhCG9dTkjiqRl8AVqp.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/original/58D9nalUYW5L5K0guw7hcpsEJBH.jpg",
+    "trailer_key": "B3tR6qQjbgI",
+    "trailer_url": "https://www.youtube.com/watch?v=B3tR6qQjbgI",
+    "trailer_embed": "https://www.youtube-nocookie.com/embed/B3tR6qQjbgI",
+    "cast": [
+      {
+        "id": 934,
+        "name": "Russell Crowe",
+        "character": "Henry Murray",
+        "profile_path": "https://image.tmdb.org/t/p/w185/3IBZF0qCZMZ7zJYlgrH0sQzNZV.jpg"
+      },
+      {
+        "id": 1277188,
+        "name": "Jacob Tremblay",
+        "character": "Ted Kaczynski",
+        "profile_path": "https://image.tmdb.org/t/p/w185/h8CXDp86Y36CUENF4SXJq5ZRTsf.jpg"
+      },
+      {
+        "id": 94185,
+        "name": "Shailene Woodley",
+        "character": "Joanne Miller",
+        "profile_path": "https://image.tmdb.org/t/p/w185/gL2NvHKW9wAH3qkZuJ76ULUiArB.jpg"
+      },
+      {
+        "id": 82809,
+        "name": "Annabelle Wallis",
+        "character": "Christiana Morgan",
+        "profile_path": "https://image.tmdb.org/t/p/w185/2ZmO2Zz9TcR0rmSJHOkivcu0heR.jpg"
+      },
+      {
+        "id": 23498,
+        "name": "Alexander Ludwig",
+        "character": "Leo Driver",
+        "profile_path": "https://image.tmdb.org/t/p/w185/3KpzKT4iGhNivSISQMe6EwpAmCi.jpg"
+      },
+      {
+        "id": 212776,
+        "name": "Marc Menchaca",
+        "character": "Eddie Turrell",
+        "profile_path": "https://image.tmdb.org/t/p/w185/fL0LmdBwau30M4AFPVJrpLRXXsU.jpg"
+      },
+      {
+        "id": 1336329,
+        "name": "Steven Ogg",
+        "character": "Dean Kaplan",
+        "profile_path": "https://image.tmdb.org/t/p/w185/dorBNAwR8qpB13pe0zd3OkFjqWR.jpg"
+      },
+      {
+        "id": 7013,
+        "name": "Mark Camacho",
+        "character": "Bill Ford",
+        "profile_path": null
+      },
+      {
+        "id": 2358880,
+        "name": "David Webster",
+        "character": "Roy",
+        "profile_path": "https://image.tmdb.org/t/p/w185/gWQ9r3s8fAsmEs0hvKBSgZppWEQ.jpg"
+      },
+      {
+        "id": 7039,
+        "name": "Bruce Ramsay",
+        "character": "Turk Kaczynski",
+        "profile_path": "https://image.tmdb.org/t/p/w185/xvVbXMzHqZ0kMs77EScQ76S4gWH.jpg"
+      }
+    ],
+    "legal_providers": [
+      {
+        "id": 8,
+        "name": "Netflix",
+        "logo": "https://image.tmdb.org/t/p/w92/rK1KljqmbvO9HQa1PBFLILWah72.png"
+      },
+      {
+        "id": 1796,
+        "name": "Netflix Standard with Ads",
+        "logo": "https://image.tmdb.org/t/p/w92/eGUwOOIxcazwEBxqJpSN5sWEu6V.png"
+      }
+    ],
+    "status": "Released",
+    "original_language": "EN",
+    "budget": 0,
+    "revenue": 0
+  },
+  {
+    "id": 1377237,
+    "tmdb_id": 1377237,
+    "media_type": "movie",
+    "title": "Runner",
+    "year": "2026",
+    "release_date": "2026-09-07",
+    "runtime": "97 min",
+    "genres": [
+      "Action",
+      "Comedy"
+    ],
+    "genres_formatted": "Action, Comedy",
+    "tagline": "Next-day delivery isn't an option.",
+    "overview": "A former soldier is thrown into a brutal race against time when a critical medical delivery makes him and his unlikely partner the targets of a ruthless cartel. As the mission spirals into a deadly manhunt, every detour, delay, and bullet pushes them closer to failure. With betrayal closing in from every side, they must survive the chase and deliver their cargo to save the life of a little girl.",
+    "vote_average": 8.179,
+    "rating": 8.2,
+    "vote_count": 221,
+    "poster": "https://image.tmdb.org/t/p/w500/yBKMAIj7clP42UkFejhGDBBoTpb.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/original/2c9zNZJL0ZdagD6JbmU3hH4hovs.jpg",
+    "trailer_key": "otxjH3lrunU",
+    "trailer_url": "https://www.youtube.com/watch?v=otxjH3lrunU",
+    "trailer_embed": "https://www.youtube-nocookie.com/embed/otxjH3lrunU",
+    "cast": [
+      {
+        "id": 64295,
+        "name": "Alan Ritchson",
+        "character": "Hank Malone",
+        "profile_path": "https://image.tmdb.org/t/p/w185/92YNEEpCyugkTzPprJwZpvVtvuK.jpg"
+      },
+      {
+        "id": 887,
+        "name": "Owen Wilson",
+        "character": "Ben Bishop",
+        "profile_path": "https://image.tmdb.org/t/p/w185/5A46lNOwmpX77jAdhyKxU7e2Hub.jpg"
+      },
+      {
+        "id": 17289,
+        "name": "Rodrigo Santoro",
+        "character": "Damian Zaldivar",
+        "profile_path": "https://image.tmdb.org/t/p/w185/d3MaF9SPHDn2PMYHuqdnO0Csik6.jpg"
+      },
+      {
+        "id": 1681867,
+        "name": "Leila George",
+        "character": "Kate Baker",
+        "profile_path": "https://image.tmdb.org/t/p/w185/s46DMiPDGSMq6qad5TL8mG5qfdy.jpg"
+      },
+      {
+        "id": 1331024,
+        "name": "Kate Box",
+        "character": "Dr. Ainsley",
+        "profile_path": "https://image.tmdb.org/t/p/w185/zv4NckgNBn6Tc2xhCdNFFx9o9EZ.jpg"
+      },
+      {
+        "id": 220914,
+        "name": "Peta Sergeant",
+        "character": "Nurse Julie",
+        "profile_path": "https://image.tmdb.org/t/p/w185/owkSN29t7P6hpazZKsUMt7FybrP.jpg"
+      },
+      {
+        "id": 1352343,
+        "name": "Cecilia Toussaint",
+        "character": "Donna Zaldivar",
+        "profile_path": "https://image.tmdb.org/t/p/w185/2dZRblt3alR4ihcBNasYDI1gwc0.jpg"
+      },
+      {
+        "id": 131928,
+        "name": "Geraldine Hakewill",
+        "character": "Monica",
+        "profile_path": "https://image.tmdb.org/t/p/w185/cMzkT78ZH4qluKg2VumKkF3eTia.jpg"
+      },
+      {
+        "id": 61784,
+        "name": "Goran D. Kleut",
+        "character": "Luke",
+        "profile_path": "https://image.tmdb.org/t/p/w185/vsN8BI3t4c8JHLoLznCZxO9gZ6r.jpg"
+      },
+      {
+        "id": 4900411,
+        "name": "Scarlett Crabtree",
+        "character": "Ellie Baker",
+        "profile_path": "https://image.tmdb.org/t/p/w185/3377x3ADVhE5kuPV7JpCByqvF5r.jpg"
+      }
+    ],
+    "legal_providers": [
+      {
+        "id": 119,
+        "name": "Amazon Prime Video",
+        "logo": "https://image.tmdb.org/t/p/w92/gMZdpavHmxFNnLpMHwVxfqeux2g.png"
+      },
+      {
+        "id": 29,
+        "name": "Sky Go",
+        "logo": "https://image.tmdb.org/t/p/w92/1Yvl9eP3pmktqChitnFhHJHcBtX.png"
+      },
+      {
+        "id": 2100,
+        "name": "Amazon Prime Video with Ads",
+        "logo": "https://image.tmdb.org/t/p/w92/tpwTT1FpWqLLhxUfAuDavIXDDfI.png"
+      }
+    ],
+    "status": "Released",
+    "original_language": "EN",
+    "budget": 0,
+    "revenue": 6432956
+  },
+  {
+    "id": 1283515,
+    "tmdb_id": 1283515,
+    "media_type": "movie",
+    "title": "Verity",
+    "year": "2026",
+    "release_date": "2026-09-30",
+    "runtime": "117 min",
+    "genres": [
+      "Mystery",
+      "Thriller"
+    ],
+    "genres_formatted": "Mystery, Thriller",
+    "tagline": "There is no light where we're going.",
+    "overview": "Lowen Ashleigh is hired by Jeremy Crawford to ghostwrite novels for his bestselling author wife Verity, who is unable to finish following an accident. Lowen gradually uncovers Verity's disturbing truths while residing at the Crawfords' home to work.",
+    "vote_average": 6.935,
+    "rating": 6.9,
+    "vote_count": 23,
+    "poster": "https://image.tmdb.org/t/p/w500/dGSsPovyUW5XVekXcy7F2GyhTEh.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/original/9qxyrJfjk577ym5WD6HCDmunoyO.jpg",
+    "trailer_key": "5RJIucBAqJE",
+    "trailer_url": "https://www.youtube.com/watch?v=5RJIucBAqJE",
+    "trailer_embed": "https://www.youtube-nocookie.com/embed/5RJIucBAqJE",
+    "cast": [
+      {
+        "id": 118545,
+        "name": "Dakota Johnson",
+        "character": "Lowen Ashleigh",
+        "profile_path": "https://image.tmdb.org/t/p/w185/qFek0KqpaPV5mVyHHNfAapDE9Tj.jpg"
+      },
+      {
+        "id": 1813,
+        "name": "Anne Hathaway",
+        "character": "Verity Crawford",
+        "profile_path": "https://image.tmdb.org/t/p/w185/nbccV2pMoyLTCeg5DQip24Eq0Jp.jpg"
+      },
+      {
+        "id": 2299,
+        "name": "Josh Hartnett",
+        "character": "Jeremy Crawford",
+        "profile_path": "https://image.tmdb.org/t/p/w185/5eMo8D7h1XrSu6ZN4UXhPcS6YNG.jpg"
+      },
+      {
+        "id": 5269231,
+        "name": "Brady Wagner",
+        "character": "Crew Crawford",
+        "profile_path": "https://image.tmdb.org/t/p/w185/9zwYF2aPqotnCknqXktEbZ9wdg7.jpg"
+      },
+      {
+        "id": 1100144,
+        "name": "Ismael Cruz Cordova",
+        "character": "Corey",
+        "profile_path": "https://image.tmdb.org/t/p/w185/oXcrsQGndk60iFkNB8qFnMHlNzL.jpg"
+      },
+      {
+        "id": 1429011,
+        "name": "Irina Dvorovenko",
+        "character": "Anna",
+        "profile_path": "https://image.tmdb.org/t/p/w185/f0XyxPtobP1MkwByneD3zAi0YNj.jpg"
+      },
+      {
+        "id": 6497911,
+        "name": "Sienna Kulovitz",
+        "character": "Harper Crawford",
+        "profile_path": null
+      },
+      {
+        "id": 221810,
+        "name": "K.K. Moggie",
+        "character": "Amanda Thomas",
+        "profile_path": "https://image.tmdb.org/t/p/w185/hQvZKknETtr4eTuK5I27f6jdRUY.jpg"
+      },
+      {
+        "id": 1620969,
+        "name": "Tom Galantich",
+        "character": "Barron Stephens",
+        "profile_path": "https://image.tmdb.org/t/p/w185/5d1I6tyB1CnECYhos3rX3xOqH9R.jpg"
+      },
+      {
+        "id": 106187,
+        "name": "Lou Martini Jr.",
+        "character": "Limo Driver",
+        "profile_path": "https://image.tmdb.org/t/p/w185/85s5KR0BA6dhMJtOrvtKGY8Bz8E.jpg"
+      }
+    ],
+    "legal_providers": [],
+    "status": "Released",
+    "original_language": "EN",
+    "budget": 40000000,
+    "revenue": 0
+  },
+  {
+    "id": 1423191,
+    "tmdb_id": 1423191,
+    "media_type": "movie",
+    "title": "Resident Evil",
+    "year": "2026",
+    "release_date": "2026-09-16",
+    "runtime": "95 min",
+    "genres": [
+      "Horror",
+      "Science Fiction",
+      "Adventure"
+    ],
+    "genres_formatted": "Horror, Science Fiction, Adventure",
+    "tagline": "A new era of evil.",
+    "overview": "Medical courier Bryan unwittingly finds himself fighting for survival as one fateful, horrifying night collapses around him in chaos.",
+    "vote_average": 7.3,
+    "rating": 7.3,
+    "vote_count": 652,
+    "poster": "https://image.tmdb.org/t/p/w500/i7UyjfPio0VFHB9rBUZSFyhOoM8.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/original/3icyRAqgakNcQn6aDVz9libFmBA.jpg",
+    "trailer_key": "E7OzF0wWkWE",
+    "trailer_url": "https://www.youtube.com/watch?v=E7OzF0wWkWE",
+    "trailer_embed": "https://www.youtube-nocookie.com/embed/E7OzF0wWkWE",
+    "cast": [
+      {
+        "id": 148992,
+        "name": "Austin Abrams",
+        "character": "Bryan",
+        "profile_path": "https://image.tmdb.org/t/p/w185/nvbJNwyhIICUFcS4lhxj9mGvL5z.jpg"
+      },
+      {
+        "id": 1294982,
+        "name": "Paul Walter Hauser",
+        "character": "Paul",
+        "profile_path": "https://image.tmdb.org/t/p/w185/hXjjbYg1Ah8mFf5ZcaakyXzDKMx.jpg"
+      },
+      {
+        "id": 3119545,
+        "name": "Kali Reis",
+        "character": "Maxine",
+        "profile_path": "https://image.tmdb.org/t/p/w185/ruLDXHnKA4aHEQCcFGDAJ7bLTdt.jpg"
+      },
+      {
+        "id": 1838225,
+        "name": "Zach Cherry",
+        "character": "Carl",
+        "profile_path": "https://image.tmdb.org/t/p/w185/fT3Wv8ef0Vn0daHWAObCp2Bd4Y.jpg"
+      },
+      {
+        "id": 1169291,
+        "name": "Johnno Wilson",
+        "character": "Officer Wilson",
+        "profile_path": "https://image.tmdb.org/t/p/w185/eZtBoBE0F7Qb9ZyNpacMOQtmWnM.jpg"
+      },
+      {
+        "id": 2445714,
+        "name": "Shaun W. Loeser",
+        "character": "Puker",
+        "profile_path": "https://image.tmdb.org/t/p/w185/pMV7kzy7OHk4X93uRGbrdvuFgQB.jpg"
+      },
+      {
+        "id": 84833,
+        "name": "Zach Cregger",
+        "character": "Intercom (voice)",
+        "profile_path": "https://image.tmdb.org/t/p/w185/bpFGFfWYIrZVK7WjwkVLwIoMKEb.jpg"
+      },
+      {
+        "id": 1362996,
+        "name": "Emily Piggford",
+        "character": "Dr. Maria Stokes",
+        "profile_path": "https://image.tmdb.org/t/p/w185/ruijvaNNXzGXqGphQXsoHts1Ovc.jpg"
+      },
+      {
+        "id": 1221073,
+        "name": "Will Merrick",
+        "character": "Dave",
+        "profile_path": "https://image.tmdb.org/t/p/w185/zqyH01TJ9WW6TaAULCG2ChSbNwI.jpg"
+      },
+      {
+        "id": 5848547,
+        "name": "Zoé Bellas",
+        "character": "Birdie",
+        "profile_path": "https://image.tmdb.org/t/p/w185/3nw4EhStA4IcJQxz4Yevm25u5ov.jpg"
+      }
+    ],
+    "legal_providers": [],
+    "status": "Released",
+    "original_language": "EN",
+    "budget": 75000000,
+    "revenue": 208312282
+  },
+  {
+    "id": 977942,
+    "tmdb_id": 977942,
+    "media_type": "movie",
+    "title": "The Uprising",
+    "year": "2026",
+    "release_date": "2026-09-10",
+    "runtime": "128 min",
+    "genres": [
+      "History",
+      "Drama"
+    ],
+    "genres_formatted": "History, Drama",
+    "tagline": "Rise or die.",
+    "overview": "As war and plague devastate 14th-century England, a humble peasant ignites a rebellion, uniting an army of commoners to defy the King’s might in a desperate fight for justice and survival.",
+    "vote_average": 8.1,
+    "rating": 8.1,
+    "vote_count": 101,
+    "poster": "https://image.tmdb.org/t/p/w500/7TUl15TOsIvndKlgMWTtLgtEzZP.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/original/y0reRTsewsPh0ePtgvDeLIsb5Wk.jpg",
+    "trailer_key": "j0hAQcqx4_E",
+    "trailer_url": "https://www.youtube.com/watch?v=j0hAQcqx4_E",
+    "trailer_embed": "https://www.youtube-nocookie.com/embed/j0hAQcqx4_E",
+    "cast": [
+      {
+        "id": 37625,
+        "name": "Andrew Garfield",
+        "character": "Ploughman",
+        "profile_path": "https://image.tmdb.org/t/p/w185/beO5YvbTjrr5yy8hW26KVDMSr35.jpg"
+      },
+      {
+        "id": 478,
+        "name": "Jamie Bell",
+        "character": "John Ball",
+        "profile_path": "https://image.tmdb.org/t/p/w185/xAfNYOJYOy5ee9PHbBF8Y6xzZ9I.jpg"
+      },
+      {
+        "id": 8435,
+        "name": "Stephen Dillane",
+        "character": "Archbishop Sudbury",
+        "profile_path": "https://image.tmdb.org/t/p/w185/qjIa6pXD4Z7nL7nH2LxyHDfxNgC.jpg"
+      },
+      {
+        "id": 1945369,
+        "name": "Woody Norman",
+        "character": "King Richard II",
+        "profile_path": "https://image.tmdb.org/t/p/w185/jQlx4bAGAmQfvzEuXw6A9cEmb95.jpg"
+      },
+      {
+        "id": 2441,
+        "name": "Tom Hollander",
+        "character": "Treasurer Hales",
+        "profile_path": "https://image.tmdb.org/t/p/w185/cqZiJsImFZ6TaeShRRg49AZ9TyT.jpg"
+      },
+      {
+        "id": 1363054,
+        "name": "Cosmo Jarvis",
+        "character": "Wat Tyler",
+        "profile_path": "https://image.tmdb.org/t/p/w185/1kgghZ558CxZCJip5ufO6BAqUGp.jpg"
+      },
+      {
+        "id": 1356758,
+        "name": "Thomasin McKenzie",
+        "character": "Alyce",
+        "profile_path": "https://image.tmdb.org/t/p/w185/WOpnEFG5Q8LWxP81MtUrskmVox.jpg"
+      },
+      {
+        "id": 9012,
+        "name": "Jonny Lee Miller",
+        "character": "Mayor Walworth",
+        "profile_path": "https://image.tmdb.org/t/p/w185/otCQdDtnrMvZ5tPC62zLx0SaXeR.jpg"
+      },
+      {
+        "id": 77795,
+        "name": "Katherine Waterston",
+        "character": "Countess",
+        "profile_path": "https://image.tmdb.org/t/p/w185/zaqbXjr5jE1DnEoyAHokUDoCKOM.jpg"
+      },
+      {
+        "id": 25074,
+        "name": "Stanley Townsend",
+        "character": "Chief Justice Bealknap",
+        "profile_path": "https://image.tmdb.org/t/p/w185/ry1kek817WYHOh1npa3ojxmGJcI.jpg"
+      }
+    ],
+    "legal_providers": [],
+    "status": "Released",
+    "original_language": "EN",
+    "budget": 20000000,
+    "revenue": 7825277
+  }
 ]

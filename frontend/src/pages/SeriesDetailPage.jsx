@@ -1,27 +1,19 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaStar } from 'react-icons/fa';
-import MoviePlayer from '../components/movieplayer';
+import { Play, Film, Bookmark, ArrowLeft, Check, Clock, Calendar } from 'lucide-react';
 import MediaRow from '../components/MediaRow';
 import { getEpisodeProgressId, useMediaState } from '../context/MediaStateContext';
 import usePageMeta from '../hooks/usePageMeta';
 import './SeriesDetailPage.css';
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || 'e56f5c7830c1eb10f6ff78f42d8c8544';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const FALLBACK_POSTER = 'https://placehold.co/500x750/17171d/ffffff?text=Series';
 const FALLBACK_STILL = 'https://placehold.co/640x360/17171d/ffffff?text=No+Episode+Still';
 const FALLBACK_PROFILE = 'https://placehold.co/180x220/17171d/ffffff?text=Person';
-
-const getVisitorRegion = () => {
-  try {
-    return new Intl.Locale(navigator.language || 'en-US').region || 'US';
-  } catch {
-    return 'US';
-  }
-};
 
 function formatYears(series) {
   const startYear = series.first_air_date?.slice(0, 4);
@@ -36,10 +28,14 @@ function formatYears(series) {
 function SeriesDetailPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const { episodeProgress, setEpisodeWatched } = useMediaState();
-  const requestedSeason = Number(searchParams.get('season'));
-  const requestedEpisode = Number(searchParams.get('episode'));
-  const hasRequestedSeason = searchParams.has('season') && Number.isInteger(requestedSeason);
+  const navigate = useNavigate();
+  const { bookmarks, toggleBookmark, episodeProgress, setEpisodeWatched } = useMediaState();
+  const isBookmarked = bookmarks?.some((b) => String(b.id) === String(id));
+  const rawSeason = searchParams.get('season') || searchParams.get('s');
+  const rawEpisode = searchParams.get('episode') || searchParams.get('e');
+  const requestedSeason = Number(rawSeason);
+  const requestedEpisode = Number(rawEpisode);
+  const hasRequestedSeason = rawSeason !== null && Number.isInteger(requestedSeason);
   const [series, setSeries] = useState(null);
   const [selectedSeason, setSelectedSeason] = useState(null);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
@@ -50,9 +46,6 @@ function SeriesDetailPage() {
   const [seasonError, setSeasonError] = useState('');
   const [cast, setCast] = useState([]);
   const [trailer, setTrailer] = useState(null);
-  const [providerGroups, setProviderGroups] = useState([]);
-  const [providerLink, setProviderLink] = useState('');
-  const [visitorRegion, setVisitorRegion] = useState('US');
   const [recommendations, setRecommendations] = useState([]);
   const [supportLoading, setSupportLoading] = useState(true);
   const [pageMeta, setPageMeta] = useState({
@@ -61,16 +54,6 @@ function SeriesDetailPage() {
   });
 
   usePageMeta(pageMeta.title, pageMeta.description);
-
-  useEffect(() => {
-    if (!detailsLoading && !supportLoading && trailer && window.location.hash === '#trailer') {
-      const frame = window.requestAnimationFrame(() => {
-        document.getElementById('trailer')?.scrollIntoView({ behavior: 'auto', block: 'start' });
-      });
-      return () => window.cancelAnimationFrame(frame);
-    }
-    return undefined;
-  }, [detailsLoading, supportLoading, trailer, episodesLoading, episodes.length]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -97,7 +80,7 @@ function SeriesDetailPage() {
         title: `Watch ${data.name || data.original_name || 'Series'} | JinFlix`,
         description: `View ${data.name || data.original_name || 'this series'} details, seasons, and episode guides on JinFlix.`
       });
-    }).catch((fetchError) => {
+    }).catch(() => {
       if (!controller.signal.aborted) {
         setError('Could not load series details right now.');
       }
@@ -110,12 +93,8 @@ function SeriesDetailPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const region = getVisitorRegion();
-    setVisitorRegion(region);
     setCast([]);
     setTrailer(null);
-    setProviderGroups([]);
-    setProviderLink('');
     setRecommendations([]);
     setSupportLoading(true);
 
@@ -128,25 +107,14 @@ function SeriesDetailPage() {
     Promise.all([
       fetchOptional('aggregate_credits'),
       fetchOptional('videos'),
-      fetchOptional('watch/providers'),
       fetchOptional('recommendations')
-    ]).then(([credits, videos, watchData, recommendationData]) => {
+    ]).then(([credits, videos, recommendationData]) => {
       if (controller.signal.aborted) return;
 
       setCast((credits?.cast || []).slice(0, 12));
 
       const trailers = (videos?.results || []).filter((video) => video.site === 'YouTube' && video.type === 'Trailer');
       setTrailer(trailers.find((video) => video.official) || trailers[0] || null);
-
-      const regionalProviders = watchData?.results?.[region];
-      if (regionalProviders) {
-        setProviderGroups([
-          { label: 'Streaming', providers: regionalProviders.flatrate || [] },
-          { label: 'Rent', providers: regionalProviders.rent || [] },
-          { label: 'Buy', providers: regionalProviders.buy || [] }
-        ].filter((group) => group.providers.length > 0));
-        setProviderLink(regionalProviders.link || watchData.link || '');
-      }
 
       const resultItems = (recommendationData?.results || []).map((item) => ({
         ...item,
@@ -184,7 +152,7 @@ function SeriesDetailPage() {
       const requestedEpisodeExists = selectedSeason === requestedSeason
         && seasonEpisodes.some((episode) => episode.episode_number === requestedEpisode);
       setSelectedEpisode(requestedEpisodeExists ? requestedEpisode : seasonEpisodes[0]?.episode_number || 1);
-    }).catch((fetchError) => {
+    }).catch(() => {
       if (!controller.signal.aborted) {
         setSeasonError('Could not load episodes for this season.');
       }
@@ -261,82 +229,159 @@ function SeriesDetailPage() {
               <span>Genres</span>
               <strong>{genres}</strong>
             </div>
-            <Link to="/series" className="back-link series-back-link">Back to series</Link>
+            <div className="series-action-buttons">
+              <button
+                type="button"
+                onClick={() => navigate(`/watch/tv/${id}?season=${selectedSeason || 1}&episode=${selectedEpisode || 1}`)}
+                className="series-btn-primary"
+                title={`Watch Season ${selectedSeason || 1}, Episode ${selectedEpisode || 1}`}
+              >
+                <Play size={18} fill="currentColor" />
+                <span>Watch Now</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate(`/trailer/tv/${id}`)}
+                className="series-btn-secondary"
+                title="Watch Series Trailer"
+              >
+                <Film size={18} />
+                <span>Watch Trailer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  toggleBookmark({
+                    id: series.id,
+                    type: 'tv',
+                    title,
+                    poster_path: series.poster_path,
+                  })
+                }
+                className={`series-btn-icon ${isBookmarked ? 'is-bookmarked' : ''}`}
+                title={isBookmarked ? 'Remove from My List' : 'Add to My List'}
+                aria-label={isBookmarked ? 'Remove from My List' : 'Add to My List'}
+              >
+                <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} />
+              </button>
+
+              <Link to="/series" className="series-back-link">
+                <ArrowLeft size={16} />
+                <span>Back to series</span>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
+      {/* Arranged Episodes Section */}
       <section className="series-episodes-section" aria-labelledby="series-episodes-heading">
         <div className="series-episodes-heading">
-          <div>
+          <div className="episodes-header-left">
             <h2 id="series-episodes-heading">Episodes</h2>
-            <p className="series-episode-total">{series.number_of_episodes || episodes.length} episodes across {series.number_of_seasons || seasons.length} seasons</p>
+            <p className="series-episode-total">
+              {series.number_of_episodes || episodes.length} episodes across {seasons.length} season{seasons.length > 1 ? 's' : ''}
+            </p>
           </div>
-          <div className="series-season-controls">
-            <label className="series-season-select series-season-picker">
-              Season
-              <select
-                value={selectedSeason ?? ''}
-                onChange={(event) => {
-                  setSelectedSeason(Number(event.target.value));
-                  setSelectedEpisode(1);
-                }}
-              >
-                {seasons.map((season) => (
-                  <option key={season.id} value={season.season_number}>
-                    {season.name || `Season ${season.season_number}`}
-                  </option>
-                ))}
-              </select>
-            </label>
+
+          {/* Quick Season Dropdown Selector */}
+          <div className="series-season-picker-wrap">
+            <select
+              value={selectedSeason ?? ''}
+              onChange={(event) => {
+                setSelectedSeason(Number(event.target.value));
+                setSelectedEpisode(1);
+              }}
+              className="series-season-select-dropdown"
+              aria-label="Select season"
+            >
+              {seasons.map((season) => (
+                <option key={season.id} value={season.season_number}>
+                  {season.name || `Season ${season.season_number}`} ({season.episode_count || 0} eps)
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-        <div className="series-season-progress-list" aria-label="Progress by season">
-          {seasons.filter((season) => season.episode_count > 0).map((season) => {
-            const watchedCount = watchedCountBySeason[season.season_number] || 0;
-            const progress = Math.round((watchedCount / season.episode_count) * 100);
 
-            return (
-              <div className="series-season-progress" key={season.id}>
-                <div className="series-season-progress-label">
-                  <span>{season.name || `Season ${season.season_number}`}</span>
-                  <span>{watchedCount}/{season.episode_count}</span>
-                </div>
-                <div
-                  className="series-season-progress-track"
-                  role="progressbar"
-                  aria-label={`${season.name || `Season ${season.season_number}`} watched`}
-                  aria-valuemin="0"
-                  aria-valuemax={season.episode_count}
-                  aria-valuenow={watchedCount}
+        {/* Season Navigation Tab Pills */}
+        <div className="series-season-tabs-bar">
+          <div className="series-season-tabs">
+            {seasons.map((season) => {
+              const isSelected = selectedSeason === season.season_number;
+              const seasonWatched = watchedCountBySeason[season.season_number] || 0;
+              const isFullyWatched = season.episode_count > 0 && seasonWatched >= season.episode_count;
+
+              return (
+                <button
+                  key={season.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSeason(season.season_number);
+                    setSelectedEpisode(1);
+                  }}
+                  className={`season-tab-pill ${isSelected ? 'is-active-season' : ''}`}
                 >
-                  <span style={{ width: `${progress}%` }} />
-                </div>
-              </div>
-            );
-          })}
+                  <span>{season.name || `Season ${season.season_number}`}</span>
+                  {isFullyWatched ? (
+                    <span className="season-pill-badge is-completed">✓</span>
+                  ) : seasonWatched > 0 ? (
+                    <span className="season-pill-badge">{seasonWatched}/{season.episode_count}</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {selectedSeason !== null ? (
-          <MoviePlayer
-            tmdbId={series.id}
-            mediaType="tv"
-            movieTitle={title}
-            totalEpisodes={series.number_of_episodes}
-            seasonNumber={selectedSeason}
-            episodeNumber={selectedEpisode}
-            onEpisodeChange={setSelectedEpisode}
-            episodeOptions={episodes}
-            showEpisodeSelectors={false}
-          />
-        ) : null}
+        {/* Selected Season Status & Progress Header */}
+        <div className="selected-season-status-card">
+          <div className="season-status-top">
+            <div className="season-status-meta">
+              <span className="season-badge-tag">Season {selectedSeason}</span>
+              <strong className="season-status-title">
+                {seasons.find((s) => s.season_number === selectedSeason)?.name || `Season ${selectedSeason}`}
+              </strong>
+            </div>
+            <div className="season-progress-label">
+              <span>{watchedCountBySeason[selectedSeason] || 0} of {episodes.length} Watched</span>
+              <span className="season-percent-pill">
+                {Math.round(((watchedCountBySeason[selectedSeason] || 0) / Math.max(1, episodes.length)) * 100)}%
+              </span>
+            </div>
+          </div>
 
+          <div
+            className="season-progress-track"
+            role="progressbar"
+            aria-label={`Season ${selectedSeason} progress`}
+            aria-valuemin="0"
+            aria-valuemax={episodes.length}
+            aria-valuenow={watchedCountBySeason[selectedSeason] || 0}
+          >
+            <div
+              className="season-progress-fill"
+              style={{ width: `${Math.round(((watchedCountBySeason[selectedSeason] || 0) / Math.max(1, episodes.length)) * 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Episode Cards Grid */}
         {episodesLoading ? (
-          <div className="series-episode-loading series-skeleton" role="status">Loading season episodes...</div>
+          <div className="series-episodes-grid skeleton-grid" role="status">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="series-episode-card is-loading-card">
+                <div className="episode-thumbnail-wrap skeleton-box" />
+                <div className="episode-content skeleton-box" />
+              </div>
+            ))}
+          </div>
         ) : seasonError ? (
           <p className="empty-state" role="alert">{seasonError}</p>
         ) : episodes.length > 0 ? (
-          <div className="series-episode-list">
+          <div className="series-episodes-grid">
             {episodes.map((episode) => {
               const progressKey = getEpisodeProgressId(series.id, selectedSeason, episode.episode_number);
               const watched = Boolean(episodeProgress[progressKey]);
@@ -344,13 +389,15 @@ function SeriesDetailPage() {
               return (
                 <article
                   key={episode.id}
-                  className={`series-episode${selectedEpisode === episode.episode_number ? ' selected' : ''}`}
+                  className={`series-episode-card ${watched ? 'is-watched' : ''}`}
                 >
-                  <button
-                    type="button"
-                    className="series-episode-select"
-                    onClick={() => setSelectedEpisode(episode.episode_number)}
-                    aria-pressed={selectedEpisode === episode.episode_number}
+                  {/* Thumbnail with overlay play trigger */}
+                  <div
+                    className="episode-thumbnail-wrap"
+                    onClick={() => {
+                      setSelectedEpisode(episode.episode_number);
+                      navigate(`/watch/tv/${id}?season=${selectedSeason}&episode=${episode.episode_number}`);
+                    }}
                   >
                     <img
                       src={episode.still_path ? `${IMAGE_BASE_URL}/w500${episode.still_path}` : FALLBACK_STILL}
@@ -358,39 +405,97 @@ function SeriesDetailPage() {
                       loading="lazy"
                       decoding="async"
                     />
-                    <span className="series-episode-copy">
-                      <strong className="series-episode-title">{episode.episode_number}. {episode.name || 'Untitled episode'}</strong>
-                      <span className={`series-episode-meta${episode.air_date && new Date(episode.air_date) > new Date() ? ' is-upcoming' : ''}`}>
-                        {episode.air_date || 'Air date unavailable'}
-                        <span aria-hidden="true"> · </span>
-                        {episode.runtime ? `${episode.runtime} min` : 'Runtime unavailable'}
+
+                    {/* Play hover overlay */}
+                    <div className="episode-play-overlay">
+                      <div className="episode-play-icon">
+                        <Play size={22} fill="currentColor" />
+                      </div>
+                    </div>
+
+                    {/* Corner Badges */}
+                    <div className="episode-thumb-top-badges">
+                      <span className="episode-number-badge">EP {episode.episode_number}</span>
+                      {watched && <span className="episode-watched-badge"><Check size={12} /> Watched</span>}
+                    </div>
+
+                    {episode.runtime ? (
+                      <span className="episode-runtime-badge">
+                        <Clock size={11} /> {episode.runtime}m
                       </span>
-                      <span className="series-episode-overview">{episode.overview || 'No episode synopsis is available.'}</span>
-                    </span>
-                  </button>
-                  <label className="episode-watched-control">
-                    <input
-                      type="checkbox"
-                      checked={watched}
-                      aria-label={`Mark ${title}, season ${selectedSeason}, episode ${episode.episode_number} as watched`}
-                      onChange={(event) => setEpisodeWatched({
-                        seriesId: series.id,
-                        seriesTitle: title,
-                        poster: series.poster_path ? `${IMAGE_BASE_URL}/w500${series.poster_path}` : FALLBACK_POSTER,
-                        year: series.first_air_date?.slice(0, 4) || 'N/A',
-                        genre: genres,
-                        rating: series.vote_average ? `${series.vote_average.toFixed(1)}/10` : 'N/A',
-                        vote_average: series.vote_average,
-                        seasonNumber: selectedSeason,
-                        episodeNumber: episode.episode_number,
-                        episodeTitle: episode.name || 'Untitled episode',
-                        episodeCountInSeason: episodes.length,
-                        seasonNumbers: seasons.map((season) => season.season_number),
-                        totalSeasons: series.number_of_seasons || seasons.length
-                      }, event.target.checked)}
-                    />
-                    <span>Watched</span>
-                  </label>
+                    ) : null}
+                  </div>
+
+                  {/* Episode Content */}
+                  <div className="episode-content">
+                    <div className="episode-title-row">
+                      <h4
+                        className="episode-title"
+                        onClick={() => navigate(`/watch/tv/${id}?season=${selectedSeason}&episode=${episode.episode_number}`)}
+                      >
+                        {episode.episode_number}. {episode.name || `Episode ${episode.episode_number}`}
+                      </h4>
+                    </div>
+
+                    <div className="episode-meta-row">
+                      {episode.air_date && (
+                        <span className="episode-air-date">
+                          <Calendar size={12} /> {episode.air_date}
+                        </span>
+                      )}
+                      {episode.vote_average > 0 && (
+                        <span className="episode-rating">
+                          ★ {episode.vote_average.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="episode-overview">
+                      {episode.overview || 'No episode synopsis is currently available.'}
+                    </p>
+
+                    {/* Action Bar */}
+                    <div className="episode-actions-row">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/watch/tv/${id}?season=${selectedSeason}&episode=${episode.episode_number}`)}
+                        className="episode-watch-now-btn"
+                        title={`Watch Episode ${episode.episode_number}`}
+                      >
+                        <Play size={14} fill="currentColor" />
+                        <span>Watch Now</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEpisodeWatched(
+                            {
+                              seriesId: series.id,
+                              seriesTitle: title,
+                              poster: series.poster_path ? `${IMAGE_BASE_URL}/w500${series.poster_path}` : FALLBACK_POSTER,
+                              year: series.first_air_date?.slice(0, 4) || 'N/A',
+                              genre: genres,
+                              rating: series.vote_average ? `${series.vote_average.toFixed(1)}/10` : 'N/A',
+                              vote_average: series.vote_average,
+                              seasonNumber: selectedSeason,
+                              episodeNumber: episode.episode_number,
+                              episodeTitle: episode.name || 'Untitled episode',
+                              episodeCountInSeason: episodes.length,
+                              seasonNumbers: seasons.map((season) => season.season_number),
+                              totalSeasons: series.number_of_seasons || seasons.length,
+                            },
+                            !watched
+                          )
+                        }
+                        className={`episode-watched-btn ${watched ? 'is-active' : ''}`}
+                        title={watched ? 'Mark as unwatched' : 'Mark as watched'}
+                      >
+                        <Check size={14} />
+                        <span>{watched ? 'Watched' : 'Mark Watched'}</span>
+                      </button>
+                    </div>
+                  </div>
                 </article>
               );
             })}
@@ -427,7 +532,7 @@ function SeriesDetailPage() {
       <section className="series-support-section" aria-labelledby="series-cast-heading">
         <h2 id="series-cast-heading">Cast</h2>
         {supportLoading ? (
-              <p className="series-support-empty series-support-loading" role="status">Loading cast...</p>
+          <p className="series-support-empty series-support-loading" role="status">Loading cast...</p>
         ) : cast.length > 0 ? (
           <div className="detail-author-grid series-cast-grid">
             {cast.map((person) => {
@@ -456,54 +561,6 @@ function SeriesDetailPage() {
           </div>
         ) : (
           <p className="series-support-empty">Cast details are unavailable.</p>
-        )}
-      </section>
-
-      <section id="trailer" className="series-support-section" aria-labelledby="series-trailer-heading">
-        <h2 id="series-trailer-heading">Trailer</h2>
-        {supportLoading ? (
-          <p className="series-support-empty series-support-loading" role="status">Loading trailer...</p>
-        ) : trailer ? (
-          <div className="series-trailer-frame">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${trailer.key}`}
-              title={`${title} trailer`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
-          </div>
-        ) : (
-          <p className="series-support-empty">No trailer is available.</p>
-        )}
-      </section>
-
-      <section className="series-support-section" aria-labelledby="series-watch-heading">
-        <h2 id="series-watch-heading">Where to Watch</h2>
-        <p className="series-support-region">Availability for {visitorRegion}</p>
-        {supportLoading ? (
-          <p className="series-support-empty series-support-loading" role="status">Loading provider availability...</p>
-        ) : providerGroups.length > 0 ? (
-          <>
-            <div className="series-provider-groups">
-              {providerGroups.map((group) => (
-                <div className="series-provider-group" key={group.label}>
-                  <h3>{group.label}</h3>
-                  <div className="provider-row">
-                    {group.providers.map((provider) => (
-                      <span className="provider-chip" key={provider.provider_id}>
-                        {provider.logo_path ? <img src={`${IMAGE_BASE_URL}/w92${provider.logo_path}`} alt="" className="provider-logo" /> : null}
-                        {provider.provider_name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {providerLink ? <a className="series-provider-link" href={providerLink} target="_blank" rel="noreferrer">See all options</a> : null}
-          </>
-        ) : (
-          <p className="series-support-empty">No provider listings are available for this region.</p>
         )}
       </section>
 

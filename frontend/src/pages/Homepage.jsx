@@ -35,7 +35,7 @@ function Homepage({ mediaType = 'all' }) {
 
     return (
         <div className="body">
-            <Header theme={theme} setTheme={setTheme} showHero={mediaType !== 'tv'} />
+            <Header />
             <Main mediaType={mediaType} />
         </div>
     );

@@ -3,9 +3,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import MediaRow from './MediaRow';
+import HeroBanner from './HeroBanner';
 import { useMediaState } from '../context/MediaStateContext';
+import staticFallbackMovies from '../Movies.json';
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const FALLBACK_POSTER = 'https://placehold.co/300x450/17171d/ffffff?text=No+Poster';
@@ -37,21 +39,29 @@ const normalizeItem = (item, genreMap, type) => {
     .filter(Boolean)
     .join(', ');
 
+  const genreArray = genreNames ? genreNames.split(', ').filter(Boolean) : ['Featured'];
+
   return {
     ...item,
     id: item.id,
     mediaType: type === 'series' ? 'tv' : type, // Normalized to 'tv' or 'movie'
     Title: title,
+    title: title,
     Year: year,
+    releaseYear: year,
     Genre: genreNames || 'General',
+    genres: genreArray,
     Poster: buildPosterUrl(item.poster_path),
+    backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : buildPosterUrl(item.poster_path),
     vote_average: item.vote_average || 0,
-    Plot: item.overview || 'No overview available.'
+    rating: item.vote_average ? `${item.vote_average.toFixed(1)} ★` : 'PG-13',
+    Plot: item.overview || 'No overview available.',
+    description: item.overview || 'No overview available.'
   };
 };
 
 function Main({ mediaType = 'all' }) {
-  const { episodeProgress } = useMediaState();
+  const { bookmarks, toggleBookmark, episodeProgress } = useMediaState();
 
   // Media datasets
   const [movies, setMovies] = useState([]);
@@ -82,7 +92,6 @@ function Main({ mediaType = 'all' }) {
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [selectedLanguage, setSelectedLanguage] = useState('All');
   const [minRating, setMinRating] = useState('0');
-  const [activeTab, setActiveTab] = useState('Trending');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(true);
 
@@ -103,10 +112,20 @@ function Main({ mediaType = 'all' }) {
 
         const query = searchTerm.trim();
 
+        const safeGet = (endpoint, extraParams = {}) =>
+          axios
+            .get(`${TMDB_BASE_URL}${endpoint}`, {
+              params: { api_key: TMDB_API_KEY, ...extraParams }
+            })
+            .catch((err) => {
+              console.warn(`TMDb request to ${endpoint} failed:`, err?.message || err);
+              return { data: { results: [], genres: [] } };
+            });
+
         // 1. Fetch genre mappings first
         const [movieGenreRes, tvGenreRes] = await Promise.all([
-          axios.get(`${TMDB_BASE_URL}/genre/movie/list`, { params: { api_key: TMDB_API_KEY } }),
-          axios.get(`${TMDB_BASE_URL}/genre/tv/list`, { params: { api_key: TMDB_API_KEY } })
+          safeGet('/genre/movie/list'),
+          safeGet('/genre/tv/list')
         ]);
 
         const genreMap = {
@@ -118,8 +137,8 @@ function Main({ mediaType = 'all' }) {
         // 2. Fetch media endpoints (1 page per endpoint for optimal speed)
         if (query) {
           const [movieSearch, tvSearch] = await Promise.all([
-            axios.get(`${TMDB_BASE_URL}/search/movie`, { params: { api_key: TMDB_API_KEY, query } }),
-            axios.get(`${TMDB_BASE_URL}/search/tv`, { params: { api_key: TMDB_API_KEY, query } })
+            safeGet('/search/movie', { query }),
+            safeGet('/search/tv', { query })
           ]);
 
           const normMovies = sortByRating((movieSearch.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie')));
@@ -139,26 +158,43 @@ function Main({ mediaType = 'all' }) {
             topM, topT,
             airingT
           ] = await Promise.all([
-            axios.get(`${TMDB_BASE_URL}/trending/movie/week`, { params: { api_key: TMDB_API_KEY } }),
-            axios.get(`${TMDB_BASE_URL}/trending/tv/week`, { params: { api_key: TMDB_API_KEY } }),
-            axios.get(`${TMDB_BASE_URL}/movie/popular`, { params: { api_key: TMDB_API_KEY } }),
-            axios.get(`${TMDB_BASE_URL}/tv/popular`, { params: { api_key: TMDB_API_KEY } }),
-            axios.get(`${TMDB_BASE_URL}/movie/upcoming`, { params: { api_key: TMDB_API_KEY } }),
-            axios.get(`${TMDB_BASE_URL}/tv/on_the_air`, { params: { params: { api_key: TMDB_API_KEY } } }),
-            axios.get(`${TMDB_BASE_URL}/movie/top_rated`, { params: { api_key: TMDB_API_KEY } }),
-            axios.get(`${TMDB_BASE_URL}/tv/top_rated`, { params: { api_key: TMDB_API_KEY } }),
-            axios.get(`${TMDB_BASE_URL}/tv/airing_today`, { params: { api_key: TMDB_API_KEY } })
+            safeGet('/trending/movie/week'),
+            safeGet('/trending/tv/week'),
+            safeGet('/movie/popular'),
+            safeGet('/tv/popular'),
+            safeGet('/movie/upcoming'),
+            safeGet('/tv/on_the_air'),
+            safeGet('/movie/top_rated'),
+            safeGet('/tv/top_rated'),
+            safeGet('/tv/airing_today')
           ]);
 
-          setMovies(sortByRating((trendingM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie'))));
-          setSeries(sortByRating((trendingT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv'))));
-          setPopularMovies(sortByRating((popularM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie'))));
-          setPopularSeries(sortByRating((popularT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv'))));
-          setUpcomingMovies(sortByRating((upcomingM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie'))));
-          setUpcomingSeries(sortByRating((upcomingT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv'))));
-          setTopRatedMovies(sortByRating((topM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie'))));
-          setTopRatedSeries(sortByRating((topT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv'))));
-          setAiringTodaySeries(sortByRating((airingT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv'))));
+          const normTrendingM = sortByRating((trendingM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie')));
+          const normTrendingT = sortByRating((trendingT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv')));
+          const normPopularM = sortByRating((popularM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie')));
+          const normPopularT = sortByRating((popularT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv')));
+          const normUpcomingM = sortByRating((upcomingM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie')));
+          const normUpcomingT = sortByRating((upcomingT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv')));
+          const normTopM = sortByRating((topM.data.results || []).map((i) => normalizeItem(i, genreMap, 'movie')));
+          const normTopT = sortByRating((topT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv')));
+          const normAiringT = sortByRating((airingT.data.results || []).map((i) => normalizeItem(i, genreMap, 'tv')));
+
+          // If online endpoints returned empty, gracefully fallback to seeded data
+          if (normTrendingM.length === 0 && Array.isArray(staticFallbackMovies) && staticFallbackMovies.length > 0) {
+            setMovies(staticFallbackMovies);
+            setPopularMovies(staticFallbackMovies);
+          } else {
+            setMovies(normTrendingM);
+            setPopularMovies(normPopularM.length > 0 ? normPopularM : normTrendingM);
+          }
+
+          setSeries(normTrendingT);
+          setPopularSeries(normPopularT.length > 0 ? normPopularT : normTrendingT);
+          setUpcomingMovies(normUpcomingM.length > 0 ? normUpcomingM : normTrendingM);
+          setUpcomingSeries(normUpcomingT.length > 0 ? normUpcomingT : normTrendingT);
+          setTopRatedMovies(normTopM.length > 0 ? normTopM : normTrendingM);
+          setTopRatedSeries(normTopT.length > 0 ? normTopT : normTrendingT);
+          setAiringTodaySeries(normAiringT.length > 0 ? normAiringT : normTrendingT);
         }
       } catch (err) {
         console.error('Error loading media catalog:', err);
@@ -275,35 +311,51 @@ function Main({ mediaType = 'all' }) {
     }).filter(Boolean);
   }, [episodeProgress]);
 
+  const featuredItems = useMemo(() => {
+    if (mediaType === 'tv') {
+      return series.filter((s) => s.backdrop_path || s.backdrop).slice(0, 6);
+    }
+    if (mediaType === 'movie') {
+      return movies.filter((m) => m.backdrop_path || m.backdrop).slice(0, 6);
+    }
+    // 'all': blend top rated / trending movies and series with backdrops
+    const combined = [];
+    const maxLen = Math.max(movies.length, series.length);
+    for (let i = 0; i < maxLen && combined.length < 6; i++) {
+      if (movies[i] && (movies[i].backdrop_path || movies[i].backdrop)) {
+        combined.push(movies[i]);
+      }
+      if (series[i] && (series[i].backdrop_path || series[i].backdrop) && combined.length < 6) {
+        combined.push(series[i]);
+      }
+    }
+    return combined.length > 0 ? combined : (movies.slice(0, 6) || series.slice(0, 6));
+  }, [mediaType, movies, series]);
+
+  const handleToggleHeroWatchlist = (item) => {
+    if (!item?.id) return;
+    toggleBookmark({
+      id: item.id,
+      type: item.mediaType || (item.first_air_date ? 'tv' : 'movie'),
+      title: item.Title || item.title || item.name,
+      poster_path: item.poster_path || item.Poster
+    });
+  };
+
   // Dedicated TV Hub View
   if (mediaType === 'tv') {
-    const featured = series[0];
-    const backdrop = featured?.backdrop_path || featured?.poster_path;
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 70 }, (_, i) => String(currentYear - i));
 
     return (
       <div className="main-section series-page">
-        <section
-          className="series-featured"
-          style={backdrop ? {
-            backgroundImage: `linear-gradient(90deg, rgba(8, 8, 10, 0.94) 0%, rgba(8, 8, 10, 0.72) 48%, rgba(8, 8, 10, 0.12) 100%), url("https://image.tmdb.org/t/p/original${backdrop}")`
-          } : undefined}
-        >
-          {featured ? (
-            <div className="series-featured-content">
-              <p className="series-featured-kicker">Featured Series</p>
-              <h1>{featured.Title}</h1>
-              <p className="series-featured-meta">
-                {featured.Year} · {featured.vote_average?.toFixed(1)}/10
-              </p>
-              <p className="series-featured-overview">{featured.Plot}</p>
-              <Link to={`/watch/tv/${featured.id}`} className="series-featured-link">Watch Now</Link>
-            </div>
-          ) : (
-            <div className="series-featured-content"><h1>Series Catalog</h1></div>
-          )}
-        </section>
+        {featuredItems.length > 0 ? (
+          <HeroBanner
+            movies={featuredItems}
+            onToggleWatchlist={handleToggleHeroWatchlist}
+            autoPlayInterval={5500}
+          />
+        ) : null}
 
         <section className="series-filter-section">
           <label>
@@ -356,6 +408,15 @@ function Main({ mediaType = 'all' }) {
 
   return (
     <div className="main-section">
+      {/* Featured Cinematic Hero Banner with Autoplay Carousel */}
+      {!searchTerm && featuredItems.length > 0 && (
+        <HeroBanner
+          movies={featuredItems}
+          onToggleWatchlist={handleToggleHeroWatchlist}
+          autoPlayInterval={5500}
+        />
+      )}
+
       {/* Search Bar */}
       <div className="search-panel">
         <div className="search-input-wrap">
@@ -376,7 +437,7 @@ function Main({ mediaType = 'all' }) {
                 .map((item) => (
                   <li key={`${item.mediaType}-${item.id}`}>
                     <Link
-                      to={`/watch/${item.mediaType}/${item.id}`}
+                      to={item.mediaType === 'tv' ? `/series/${item.id}` : `/movie/${item.id}`}
                       onClick={() => setShowSuggestions(false)}
                     >
                       <span>{item.Title}</span>
@@ -431,6 +492,8 @@ function Main({ mediaType = 'all' }) {
           </button>
         ))}
       </div>
+
+      {error ? <p className="empty-state">{error}</p> : null}
 
       {/* Continue Watching Section */}
       {continueWatching.length > 0 && (

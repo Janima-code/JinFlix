@@ -1,352 +1,184 @@
-import '../components/Homepagemain.css';
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import axios from 'axios';
-import { FaStar } from 'react-icons/fa';
-import MoviePlayer from '../components/movieplayer';
-import usePageMeta from '../hooks/usePageMeta';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Play, Film, Bookmark, ArrowLeft, Star, Calendar, Clock } from 'lucide-react';
+import { useMediaState } from '../context/MediaStateContext';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const fallbackPoster = 'https://placehold.co/500x750/17171d/ffffff?text=Movie';
+const BASE_URL = 'https://api.themoviedb.org/3';
+const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
-const buildPosterUrl = (path) => (path ? `${IMAGE_BASE_URL}${path}` : fallbackPoster);
-const formatCurrency = (amount) => {
-  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
-    return 'N/A';
-  }
-
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0
-  }).format(amount);
-};
-
-function MovieDetailPage({ mediaType: routeMediaType }) {
-  const { type: routeType, id } = useParams();
-  const type = routeMediaType || (routeType === 'series' ? 'tv' : routeType) || 'movie';
+export default function MovieDetailPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [movie, setMovie] = useState(null);
-  const [contributors, setContributors] = useState([]);
-  const [contributorsLoading, setContributorsLoading] = useState(true);
-  const [selectedPerson, setSelectedPerson] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [pageMeta, setPageMeta] = useState({
-    title: 'JinFlix | Movies and Series to Watch',
-    description: 'Browse movies and series on JinFlix and try playback through available embedded providers. Availability may vary.'
-  });
 
-  usePageMeta(pageMeta.title, pageMeta.description);
+  const { bookmarks, toggleBookmark } = useMediaState();
+  const isBookmarked = bookmarks?.some((b) => String(b.id) === String(id));
 
   useEffect(() => {
-    if (!loading && movie?.trailerKey && window.location.hash === '#trailer') {
-      document.getElementById('trailer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [loading, movie?.trailerKey]);
-
-  useEffect(() => {
-    const fetchMovieDetails = async () => {
+    async function fetchMovieDetails() {
+      setLoading(true);
       try {
-        setLoading(true);
-        setError(null);
-        setContributorsLoading(true);
-
-        const endpoint = type === 'tv' ? `${TMDB_BASE_URL}/tv/${id}` : `${TMDB_BASE_URL}/movie/${id}`;
-        const creditsEndpoint = `${endpoint}/credits`;
-        const providersEndpoint = `${endpoint}/watch/providers`;
-        const videosEndpoint = `${endpoint}/videos`;
-
-        const [detailsResponse, creditsResponse, providersResponse, videosResponse] = await Promise.all([
-          axios.get(endpoint, {
-            params: { api_key: TMDB_API_KEY, language: 'en-US' }
-          }),
-          axios.get(creditsEndpoint, {
-            params: { api_key: TMDB_API_KEY, language: 'en-US' }
-          }),
-          axios.get(providersEndpoint, {
-            params: { api_key: TMDB_API_KEY }
-          }),
-          axios.get(videosEndpoint, {
-            params: { api_key: TMDB_API_KEY, language: 'en-US' }
-          }).catch(() => ({ data: { results: [] } }))
-        ]);
-
-        const item = detailsResponse.data;
-        const title = item.title || item.name || 'Untitled';
-        const year = (item.release_date || item.first_air_date || '').slice(0, 4) || 'N/A';
-        const genres = (item.genres || []).map((genre) => genre.name).join(', ') || 'General';
-        const runtime = item.runtime
-          ? `${item.runtime} min`
-          : item.episode_run_time?.[0]
-            ? `${item.episode_run_time[0]} min/ep`
-            : 'N/A';
-
-        const providerResults = providersResponse.data?.results || {};
-        const providerRegion = providerResults.US || providerResults.IN || Object.values(providerResults)[0] || {};
-        const providers = [
-          ...(providerRegion.flatrate || []),
-          ...(providerRegion.rent || []),
-          ...(providerRegion.buy || [])
-        ].filter((provider, index, array) => array.findIndex((item) => item.provider_id === provider.provider_id) === index);
-        const trailers = (videosResponse.data?.results || [])
-          .filter((video) => video.site === 'YouTube' && video.type === 'Trailer');
-        const trailer = trailers.find((video) => video.official) || trailers[0] || null;
-
-        const candidatePeople = [...(creditsResponse.data.cast || []), ...(creditsResponse.data.crew || [])]
-          .filter((person) => person && (person.name || person.original_name))
-          .slice(0, 8);
-
-        const peopleDetails = await Promise.all(
-          candidatePeople.map(async (person) => {
-            try {
-              const personResponse = await axios.get(`${TMDB_BASE_URL}/person/${person.id}`, {
-                params: { api_key: TMDB_API_KEY, language: 'en-US' }
-              });
-
-              const personData = personResponse.data || {};
-              const biography = personData.biography || 'Biography details are not available for this contributor yet.';
-              const role = person.character || person.job || person.department || 'Contributor';
-
-              return {
-                id: person.id,
-                name: person.name || person.original_name || 'Unknown contributor',
-                role,
-                biography: biography.trim() || 'Biography details are not available for this contributor yet.',
-                profile: personData.profile_path ? `https://image.tmdb.org/t/p/w185${personData.profile_path}` : 'https://placehold.co/180x220/17171d/ffffff?text=Person'
-              };
-            } catch {
-              return null;
-            }
-          })
-        );
-
-        const seoDescription = `Watch ${title} (${year}) on JinFlix through available embedded providers. Explore its ${genres.toLowerCase()} story, cast, and TMDb rating. Playback availability depends on the provider.`;
-
-        setPageMeta({ title: `Watch ${title} | JinFlix`, description: seoDescription });
-
-        setMovie({
-          id: item.id,
-          title,
-          year,
-          genre: genres,
-          overview: item.overview || 'No overview available.',
-          poster: buildPosterUrl(item.poster_path),
-          backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
-          backdropPath: item.backdrop_path || '',
-          rating: item.vote_average ? `${item.vote_average.toFixed(1)}/10` : 'N/A',
-          tagline: item.tagline || 'Explore the story behind this title.',
-          releaseDate: item.release_date || item.first_air_date || 'N/A',
-          runtime,
-          originalLanguage: item.original_language ? item.original_language.toUpperCase() : 'N/A',
-          budget: formatCurrency(item.budget),
-          cost: formatCurrency(item.budget),
-          providers: providers.map((provider) => ({
-            id: provider.provider_id,
-            name: provider.provider_name,
-            logo: provider.logo_path ? `https://image.tmdb.org/t/p/w92${provider.logo_path}` : ''
-          })),
-          totalEpisodes: item.number_of_episodes,
-          trailerKey: trailer?.key || '',
-          type
-        });
-
-        const cleanedContributors = peopleDetails
-          .filter(Boolean)
-          .filter((person, index, arr) => arr.findIndex((item) => item.id === person.id) === index);
-
-        setContributors(cleanedContributors);
-        setContributorsLoading(false);
+        const res = await fetch(`${BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos`);
+        const data = await res.json();
+        setMovie(data);
       } catch (err) {
-        console.error('Error fetching movie details:', err);
-        setContributorsLoading(false);
-        setError('Could not load movie details right now.');
+        console.error('Failed to fetch movie details:', err);
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchMovieDetails();
-  }, [id, type]);
+    if (id) fetchMovieDetails();
+  }, [id]);
 
   if (loading) {
     return (
-      <div className="detail-page loading-detail-page">
-        <div className="loading-shell" aria-live="polite">
-          <div className="spinner" aria-hidden="true" />
-          <p>Loading details...</p>
-        </div>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
       </div>
     );
   }
 
-  if (error) {
-    return <div className="detail-page"><p>{error}</p><Link to="/" className="back-link">Back to home</Link></div>;
+  if (!movie) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+        <h2 className="text-xl font-bold mb-4">Movie details not found</h2>
+        <button
+          onClick={() => navigate('/')}
+          className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg"
+        >
+          Back to Home
+        </button>
+      </div>
+    );
   }
 
-  if (!movie) {
-    return <div className="detail-page"><p>Movie not found.</p><Link to="/" className="back-link">Back to home</Link></div>;
-  }
+  const runtimeHours = Math.floor((movie.runtime || 0) / 60);
+  const runtimeMinutes = (movie.runtime || 0) % 60;
+  const releaseYear = movie.release_date ? movie.release_date.split('-')[0] : '';
 
   return (
-    <div className="detail-page">
-      <div className="detail-page-hero" style={{ backgroundImage: movie.backdrop ? `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7)), url(${movie.backdrop})` : 'none' }}>
-        <div className="detail-page-content">
-          <div className="detail-page-poster-wrap">
-            <img src={movie.poster} alt={movie.title} className="detail-page-poster" loading="lazy" decoding="async" />
+    <div className="min-h-screen bg-black text-white relative">
+      {/* Top Back Navigation Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="fixed top-6 left-6 z-40 flex items-center gap-2 bg-black/60 hover:bg-black/90 text-white px-4 py-2 rounded-full border border-neutral-800 backdrop-blur-md transition-all"
+      >
+        <ArrowLeft size={18} />
+        <span className="text-sm font-medium">Back</span>
+      </button>
+
+      {/* Hero Backdrop Area */}
+      <div className="relative w-full h-[65vh] md:h-[75vh]">
+        <img
+          src={movie.backdrop_path ? `${IMAGE_BASE_URL}${movie.backdrop_path}` : `${IMAGE_BASE_URL}${movie.poster_path}`}
+          alt={movie.title}
+          className="w-full h-full object-cover object-top"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/30 to-transparent" />
+      </div>
+
+      {/* Main Content Details */}
+      <div className="max-w-6xl mx-auto px-6 -mt-32 md:-mt-48 relative z-10 pb-16">
+        <div className="flex flex-col md:flex-row gap-8 items-start">
+          {/* Poster Image */}
+          <div className="w-48 md:w-64 flex-shrink-0 rounded-xl overflow-hidden border border-neutral-800 shadow-2xl bg-neutral-900">
+            <img
+              src={`${IMAGE_BASE_URL}${movie.poster_path}`}
+              alt={movie.title}
+              className="w-full h-auto object-cover"
+            />
           </div>
 
-          <div className="detail-page-info">
-            <span className="detail-page-tag">{movie.type === 'tv' ? 'Series' : 'Movie'}</span>
-            <h1>{movie.title}</h1>
-            <div className="detail-page-meta">
-              <span>{movie.year}</span>
-              <span>{movie.genre}</span>
-              <span className="detail-rating">
-                <FaStar className="star-icon" />
-                {movie.rating}
-              </span>
-            </div>
-            {movie.tagline ? <p className="detail-page-tagline">“{movie.tagline}”</p> : null}
-            <p>{movie.overview}</p>
+          {/* Text & Primary Actions */}
+          <div className="flex-1 space-y-4">
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">{movie.title}</h1>
 
-            {movie.providers && movie.providers.length > 0 ? (
-              <div className="provider-section">
-                <span className="provider-label">Where to watch</span>
-                <div className="provider-row">
-                  {movie.providers.map((provider) => (
-                    <span key={provider.id} className="provider-chip">
-                      {provider.logo ? <img src={provider.logo} alt={provider.name} className="provider-logo" /> : null}
-                      {provider.name}
-                    </span>
-                  ))}
+            {/* Metadata Tags */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-300">
+              {movie.vote_average > 0 && (
+                <div className="flex items-center gap-1 text-yellow-400 font-semibold">
+                  <Star size={16} fill="currentColor" />
+                  <span>{movie.vote_average.toFixed(1)}</span>
                 </div>
-              </div>
-            ) : null}
-
-            <div className="detail-info-grid">
-              <div>
-                <span>Genre</span>
-                <strong>{movie.genre}</strong>
-              </div>
-              <div>
-                <span>Release date</span>
-                <strong>{movie.releaseDate}</strong>
-              </div>
-              <div>
-                <span>Runtime</span>
-                <strong>{movie.runtime}</strong>
-              </div>
-              <div>
-                <span>Budget</span>
-                <strong>{movie.budget || movie.cost || 'N/A'}</strong>
-              </div>
-              <div>
-                <span>Language</span>
-                <strong>{movie.originalLanguage}</strong>
-              </div>
+              )}
+              {releaseYear && (
+                <div className="flex items-center gap-1">
+                  <Calendar size={16} className="text-neutral-500" />
+                  <span>{releaseYear}</span>
+                </div>
+              )}
+              {movie.runtime > 0 && (
+                <div className="flex items-center gap-1">
+                  <Clock size={16} className="text-neutral-500" />
+                  <span>{`${runtimeHours}h ${runtimeMinutes}m`}</span>
+                </div>
+              )}
             </div>
 
-            <div className="detail-page-actions">
-              <Link to="/" className="back-link">Back to home</Link>
+            {/* Genres */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {movie.genres?.map((genre) => (
+                <span
+                  key={genre.id}
+                  className="bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 px-3 py-1 rounded-full"
+                >
+                  {genre.name}
+                </span>
+              ))}
+            </div>
+
+            {/* Overview */}
+            <p className="text-neutral-300 leading-relaxed max-w-3xl text-sm md:text-base pt-2">
+              {movie.overview}
+            </p>
+
+            {/* Clean Action Buttons (Navigates to dedicated pages) */}
+            <div className="flex flex-wrap items-center gap-4 pt-4">
+              {/* Navigate to dedicated Watch page */}
+              <button
+                onClick={() => navigate(`/watch/movie/${id}`)}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20"
+              >
+                <Play size={20} fill="currentColor" />
+                <span>Play Movie</span>
+              </button>
+
+              {/* Navigate to dedicated Trailer page */}
+              <button
+                onClick={() => navigate(`/trailer/movie/${id}`)}
+                className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700/80 text-white font-semibold px-6 py-3 rounded-xl transition-all"
+              >
+                <Film size={20} />
+                <span>Watch Trailer</span>
+              </button>
+
+              {/* Bookmark Toggle Button */}
+              <button
+                onClick={() =>
+                  toggleBookmark({
+                    id: movie.id,
+                    type: 'movie',
+                    title: movie.title,
+                    poster_path: movie.poster_path,
+                  })
+                }
+                className={`p-3 rounded-xl border transition-all ${
+                  isBookmarked
+                    ? 'bg-neutral-800 border-red-600 text-red-500'
+                    : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:text-white'
+                }`}
+                title={isBookmarked ? 'Remove from My List' : 'Add to My List'}
+              >
+                <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+              </button>
             </div>
           </div>
         </div>
       </div>
-
-      <section className="detail-author-section">
-        <div className="section-header">
-          <h2>Movie player</h2>
-        </div>
-        <MoviePlayer
-          tmdbId={movie.id}
-          mediaType={movie.type}
-          movieTitle={movie.title}
-          totalEpisodes={movie.totalEpisodes}
-        />
-      </section>
-
-      {movie.trailerKey ? (
-        <section id="trailer" className="detail-author-section" aria-labelledby="movie-trailer-heading">
-          <div className="section-header">
-            <h2 id="movie-trailer-heading">Official Trailer</h2>
-          </div>
-          <div className="detail-trailer-frame">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${movie.trailerKey}`}
-              title={`${movie.title} official trailer`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
-          </div>
-        </section>
-      ) : null}
-
-      <section className="detail-author-section">
-        <div className="section-header">
-          <h2>Cast & creators</h2>
-        </div>
-
-        {contributorsLoading ? (
-          <div className="contributors-loading" aria-live="polite">
-            <div className="mini-spinner" aria-hidden="true" />
-            <span>Loading cast & creators...</span>
-          </div>
-        ) : contributors.length > 0 ? (
-          <div className="detail-author-grid">
-            {contributors.map((person) => {
-              const shouldTruncate = person.biography.length > 220;
-              const bioText = shouldTruncate ? `${person.biography.slice(0, 220)}...` : person.biography;
-
-              return (
-                <article key={person.id} className="detail-author-card">
-                  <img src={person.profile} alt={person.name} className="detail-author-image" />
-                  <div className="detail-author-content">
-                    <div className="detail-author-head">
-                      <h3>{person.name}</h3>
-                      <span>{person.role}</span>
-                    </div>
-                    <p className="bio-text">{bioText}</p>
-                    {shouldTruncate ? (
-                      <button
-                        type="button"
-                        className="read-more-button"
-                        onClick={() => setSelectedPerson(person)}
-                      >
-                        Read more
-                      </button>
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="empty-state">Contributor biographies are not available for this title.</p>
-        )}
-      </section>
-
-      {selectedPerson ? (
-        <div className="bio-modal-backdrop" onClick={() => setSelectedPerson(null)}>
-          <div className="bio-modal" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="bio-modal-close" onClick={() => setSelectedPerson(null)} aria-label="Close biography">
-              ×
-            </button>
-            <div className="bio-modal-header">
-              <img src={selectedPerson.profile} alt={selectedPerson.name} className="bio-modal-image" />
-              <div>
-                <h3>{selectedPerson.name}</h3>
-                <span>{selectedPerson.role}</span>
-              </div>
-            </div>
-            <p>{selectedPerson.biography || 'Biography details are not available for this contributor yet.'}</p>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
-
-export default MovieDetailPage;

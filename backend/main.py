@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+import tmdb_service
 
-app = FastAPI(title="Embed Stream Provider API")
+app = FastAPI(title="JinFlix Backend & TMDb Metadata API")
 
 # Enable CORS for React frontend
 app.add_middleware(
@@ -40,7 +41,7 @@ def list_providers():
 @app.get("/api/stream-url")
 def get_stream_url(
     tmdb_id: int,
-    provider_id: Optional[str] = "vidsrc",
+    provider_id: Optional[str] = "vidsrc-pm",
     media_type: Optional[str] = "movie",
     season: Optional[int] = 1,
     episode: Optional[int] = 1,
@@ -48,7 +49,11 @@ def get_stream_url(
     """Resolve the formatted embed URL for a given TMDB ID and media type."""
     provider = next((p for p in PROVIDERS if p["id"] == provider_id), None)
     if not provider:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        # Gracefully fallback to the primary provider
+        provider = PROVIDERS[0] if PROVIDERS else None
+
+    if not provider:
+        raise HTTPException(status_code=404, detail="No streaming provider available")
 
     if media_type == "tv":
         embed_url = provider["tv_template"].format(
@@ -63,6 +68,49 @@ def get_stream_url(
         "media_type": media_type,
         "embed_url": embed_url,
     }
+
+
+# TMDb Metadata Endpoints
+
+
+@app.get("/api/media/{media_type}/{tmdb_id}")
+async def get_media_metadata(media_type: str, tmdb_id: int):
+    """Fetch rich normalized metadata for a movie or TV show using TMDb API."""
+    data = await tmdb_service.get_media_details(media_type=media_type, tmdb_id=tmdb_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Media title not found on TMDb")
+    return data
+
+
+@app.get("/api/media/tv/{series_id}/season/{season_number}")
+async def get_series_season(series_id: int, season_number: int):
+    """Fetch episodes metadata for a TV show season."""
+    data = await tmdb_service.get_season_details(series_id=series_id, season_number=season_number)
+    return data
+
+
+@app.get("/api/media/trending")
+async def get_trending_catalog(
+    media_type: Optional[str] = "all",
+    time_window: Optional[str] = "week",
+    page: Optional[int] = 1,
+):
+    """Fetch trending titles catalog from TMDb."""
+    return await tmdb_service.get_trending(
+        media_type=media_type, time_window=time_window, page=page
+    )
+
+
+@app.get("/api/media/search")
+async def search_catalog(
+    query: str,
+    media_type: Optional[str] = "all",
+    page: Optional[int] = 1,
+):
+    """Search titles on TMDb with normalized result cards."""
+    return await tmdb_service.search_media(
+        query=query, media_type=media_type, page=page
+    )
 
 
 if __name__ == "__main__":
