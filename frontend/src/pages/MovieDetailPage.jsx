@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Film, Bookmark, ArrowLeft, Star, Calendar, Clock } from 'lucide-react';
+import { FaStar } from 'react-icons/fa';
+import { Play, Film, Bookmark, ArrowLeft } from 'lucide-react';
 import { useMediaState } from '../context/MediaStateContext';
+import './MovieDetailPage.css';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original';
+const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+const FALLBACK_POSTER = 'https://placehold.co/500x750/17171d/ffffff?text=Movie';
+const FALLBACK_PROFILE = 'https://placehold.co/180x220/17171d/ffffff?text=Person';
 
 export default function MovieDetailPage() {
   const { id } = useParams();
@@ -17,147 +21,138 @@ export default function MovieDetailPage() {
   const isBookmarked = bookmarks?.some((b) => String(b.id) === String(id));
 
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchMovieDetails() {
       setLoading(true);
       try {
-        const res = await fetch(`${BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos`);
+        const res = await fetch(
+          `${BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos`,
+          { signal: controller.signal }
+        );
         const data = await res.json();
-        setMovie(data);
+        setMovie(data.success === false ? null : data);
       } catch (err) {
-        console.error('Failed to fetch movie details:', err);
+        if (err.name !== 'AbortError') {
+          console.error('Failed to fetch movie details:', err);
+          setMovie(null);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
-
     if (id) fetchMovieDetails();
+    return () => controller.abort();
   }, [id]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
-      </div>
+      <main className="movie-detail-page">
+        <div className="movie-state" role="status">
+          <div className="movie-spinner" aria-hidden="true" />
+          <p>Loading movie details...</p>
+        </div>
+      </main>
     );
   }
 
   if (!movie) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
-        <h2 className="text-xl font-bold mb-4">Movie details not found</h2>
-        <button
-          onClick={() => navigate('/')}
-          className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg"
-        >
-          Back to Home
-        </button>
-      </div>
+      <main className="movie-detail-page">
+        <div className="movie-state" role="alert">
+          <p>We couldn't load this movie.</p>
+          <button type="button" className="movie-btn-secondary" onClick={() => navigate('/')}>
+            Back to home
+          </button>
+        </div>
+      </main>
     );
   }
 
-  const runtimeHours = Math.floor((movie.runtime || 0) / 60);
-  const runtimeMinutes = (movie.runtime || 0) % 60;
-  const releaseYear = movie.release_date ? movie.release_date.split('-')[0] : '';
+  const hours = Math.floor((movie.runtime || 0) / 60);
+  const minutes = (movie.runtime || 0) % 60;
+  const year = movie.release_date?.slice(0, 4);
+  const director = movie.credits?.crew?.find((c) => c.job === 'Director')?.name;
+  const cast = (movie.credits?.cast || []).slice(0, 12);
+  const hasTrailer = movie.videos?.results?.some((v) => v.site === 'YouTube');
+  const language = movie.original_language
+    ? new Intl.DisplayNames(['en'], { type: 'language' }).of(movie.original_language)
+    : null;
+
+  const facts = [
+    director && { label: 'Director', value: director },
+    movie.status && { label: 'Status', value: movie.status },
+    language && { label: 'Language', value: language },
+  ].filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-black text-white relative">
-      {/* Top Back Navigation Button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="fixed top-6 left-6 z-40 flex items-center gap-2 bg-black/60 hover:bg-black/90 text-white px-4 py-2 rounded-full border border-neutral-800 backdrop-blur-md transition-all"
+    <main className="movie-detail-page">
+      <section
+        className="movie-hero"
+        style={{
+          backgroundImage: movie.backdrop_path
+            ? `url(${IMAGE_BASE_URL}/w1280${movie.backdrop_path})`
+            : 'none',
+        }}
       >
-        <ArrowLeft size={18} />
-        <span className="text-sm font-medium">Back</span>
-      </button>
-
-      {/* Hero Backdrop Area */}
-      <div className="relative w-full h-[65vh] md:h-[75vh]">
-        <img
-          src={movie.backdrop_path ? `${IMAGE_BASE_URL}${movie.backdrop_path}` : `${IMAGE_BASE_URL}${movie.poster_path}`}
-          alt={movie.title}
-          className="w-full h-full object-cover object-top"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/30 to-transparent" />
-      </div>
-
-      {/* Main Content Details */}
-      <div className="max-w-6xl mx-auto px-6 -mt-32 md:-mt-48 relative z-10 pb-16">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          {/* Poster Image */}
-          <div className="w-48 md:w-64 flex-shrink-0 rounded-xl overflow-hidden border border-neutral-800 shadow-2xl bg-neutral-900">
+        <div className="movie-hero-content">
+          <div className="movie-poster-wrap">
             <img
-              src={`${IMAGE_BASE_URL}${movie.poster_path}`}
-              alt={movie.title}
-              className="w-full h-auto object-cover"
+              src={movie.poster_path ? `${IMAGE_BASE_URL}/w500${movie.poster_path}` : FALLBACK_POSTER}
+              alt={`${movie.title} poster`}
+              className="movie-poster"
+              loading="eager"
+              decoding="async"
             />
           </div>
 
-          {/* Text & Primary Actions */}
-          <div className="flex-1 space-y-4">
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">{movie.title}</h1>
+          <div className="movie-info">
+            <span className="movie-type-badge">Movie</span>
+            <h1>{movie.title}</h1>
+            {movie.tagline && <p className="movie-tagline">{movie.tagline}</p>}
 
-            {/* Metadata Tags */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-300">
-              {movie.vote_average > 0 && (
-                <div className="flex items-center gap-1 text-yellow-400 font-semibold">
-                  <Star size={16} fill="currentColor" />
-                  <span>{movie.vote_average.toFixed(1)}</span>
-                </div>
-              )}
-              {releaseYear && (
-                <div className="flex items-center gap-1">
-                  <Calendar size={16} className="text-neutral-500" />
-                  <span>{releaseYear}</span>
-                </div>
-              )}
-              {movie.runtime > 0 && (
-                <div className="flex items-center gap-1">
-                  <Clock size={16} className="text-neutral-500" />
-                  <span>{`${runtimeHours}h ${runtimeMinutes}m`}</span>
-                </div>
-              )}
+            <div className="movie-meta">
+              {year && <span className="movie-meta-pill">{year}</span>}
+              {movie.runtime > 0 && <span className="movie-meta-pill">{`${hours}h ${minutes}m`}</span>}
+              <span className="movie-meta-pill">
+                <FaStar className="star-icon" />
+                {movie.vote_average ? `${movie.vote_average.toFixed(1)}/10` : 'N/A'}
+              </span>
             </div>
 
-            {/* Genres */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {movie.genres?.map((genre) => (
-                <span
-                  key={genre.id}
-                  className="bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 px-3 py-1 rounded-full"
-                >
-                  {genre.name}
-                </span>
-              ))}
-            </div>
+            <p className="movie-overview">{movie.overview || 'No movie overview is available.'}</p>
 
-            {/* Overview */}
-            <p className="text-neutral-300 leading-relaxed max-w-3xl text-sm md:text-base pt-2">
-              {movie.overview}
-            </p>
+            {movie.genres?.length > 0 && (
+              <div className="movie-genres">
+                {movie.genres.map((g) => (
+                  <span key={g.id}>{g.name}</span>
+                ))}
+              </div>
+            )}
 
-            {/* Clean Action Buttons (Navigates to dedicated pages) */}
-            <div className="flex flex-wrap items-center gap-4 pt-4">
-              {/* Navigate to dedicated Watch page */}
+            <div className="movie-action-buttons">
               <button
+                type="button"
+                className="movie-btn-primary"
                 onClick={() => navigate(`/watch/movie/${id}`)}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20"
               >
-                <Play size={20} fill="currentColor" />
-                <span>Play Movie</span>
+                <Play size={18} fill="currentColor" />
+                <span>Watch Now</span>
               </button>
 
-              {/* Navigate to dedicated Trailer page */}
-              <button
-                onClick={() => navigate(`/trailer/movie/${id}`)}
-                className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700/80 text-white font-semibold px-6 py-3 rounded-xl transition-all"
-              >
-                <Film size={20} />
-                <span>Watch Trailer</span>
-              </button>
+              {hasTrailer && (
+                <button
+                  type="button"
+                  className="movie-btn-secondary"
+                  onClick={() => navigate(`/trailer/movie/${id}`)}
+                >
+                  <Film size={18} />
+                  <span>Watch Trailer</span>
+                </button>
+              )}
 
-              {/* Bookmark Toggle Button */}
               <button
+                type="button"
+                className={`movie-btn-icon ${isBookmarked ? 'is-bookmarked' : ''}`}
                 onClick={() =>
                   toggleBookmark({
                     id: movie.id,
@@ -166,19 +161,62 @@ export default function MovieDetailPage() {
                     poster_path: movie.poster_path,
                   })
                 }
-                className={`p-3 rounded-xl border transition-all ${
-                  isBookmarked
-                    ? 'bg-neutral-800 border-red-600 text-red-500'
-                    : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:text-white'
-                }`}
+                aria-pressed={isBookmarked}
+                aria-label={isBookmarked ? 'Remove from My List' : 'Add to My List'}
                 title={isBookmarked ? 'Remove from My List' : 'Add to My List'}
               >
-                <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+                <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} />
+              </button>
+
+              <button type="button" className="movie-back-link" onClick={() => navigate(-1)}>
+                <ArrowLeft size={16} />
+                <span>Back</span>
               </button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section className="movie-section" aria-labelledby="movie-story-heading">
+        <h2 id="movie-story-heading">Story</h2>
+        <div className="movie-story-grid">
+          <p className="movie-story-text">
+            {movie.overview || 'No description is available yet.'}
+          </p>
+          {facts.length > 0 && (
+            <dl className="movie-facts">
+              {facts.map((f) => (
+                <div key={f.label}>
+                  <dt>{f.label}</dt>
+                  <dd>{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      </section>
+
+      {cast.length > 0 && (
+        <section className="movie-section" aria-labelledby="movie-cast-heading">
+          <h2 id="movie-cast-heading">Cast</h2>
+          <ul className="movie-cast-row">
+            {cast.map((person) => (
+              <li key={person.id} className="movie-cast-card">
+                <img
+                  src={person.profile_path ? `${IMAGE_BASE_URL}/w185${person.profile_path}` : FALLBACK_PROFILE}
+                  alt={person.name}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div>
+                  <h3>{person.name}</h3>
+                  <p>{person.character || 'Cast member'}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </main>
   );
 }
