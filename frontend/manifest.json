@@ -1,0 +1,34 @@
+{
+  "background_color": "#ffffff",
+  "description": "JinFlix helps you discover trending movies, top rated \nseries and detailed streaming info powered by TMDb ratings.",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "JinFlix -Discover movies and series",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "JinFlix | Discover Movies &amp; Series",
+  "start_url": "/",
+  "theme_color": "#0b0b0f",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/cLwjf5Q2/Gemini-Generated-Image-nhc9clnhc9clnhc9.jpg",
+      "type": "image/jpeg",
+      "sizes": "1280x698",
+      "isSquare": false,
+      "isPng": false,
+      "isWebp": false,
+      "isJpg": true,
+      "width": 1280,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
+    }
+  ],
+  "lang": "en",
+  "categories": [
+    "multimedia"
+  ],
+  "share_target": {
+    "method": "GET"
+  }
+}
