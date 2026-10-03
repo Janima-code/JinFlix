@@ -21,6 +21,7 @@ function Header() {
           <NavLink to="/" end>Home</NavLink>
           <NavLink to="/movies">Movies</NavLink>
           <NavLink to="/series">Series</NavLink>
+          <NavLink to="/my-list">My List</NavLink>
         </nav>
 
         <div className="header-actions">

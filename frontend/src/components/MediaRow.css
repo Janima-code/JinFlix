@@ -1,60 +1,77 @@
+/* ============================================================
+   MEDIA ROW — Section wrapper
+   ============================================================ */
+
 .media-row-section,
 .content-section {
-  margin-bottom: 2.2rem;
+  margin-bottom: 2.8rem;
   position: relative;
 }
+
+/* ============================================================
+   SECTION HEADER — Title + Scroll Controls
+   ============================================================ */
 
 .media-row-header,
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
+  padding: 0 2px;
 }
 
 .section-header h2 {
   margin: 0;
-  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
+  text-transform: uppercase;
+  user-select: none;
 }
 
+/* Red accent bar before title */
 .section-header h2::before {
   content: '';
   display: inline-block;
   width: 4px;
-  height: 1.15em;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #ff3b47 0%, #e50914 100%);
-  box-shadow: 0 0 10px rgba(229, 9, 20, 0.6);
+  height: 1.1em;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #ff3b47 0%, #c5070f 100%);
+  box-shadow: 0 0 12px rgba(229, 9, 20, 0.7);
 }
+
+/* ============================================================
+   SCROLL ARROW BUTTONS
+   ============================================================ */
 
 .row-controls,
 .row-scroll-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 6px;
 }
 
 .row-controls button,
 .row-scroll-controls .scroll-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #fff;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 0.85rem;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -63,126 +80,292 @@
   background: #e50914;
   border-color: #e50914;
   color: #ffffff;
-  transform: scale(1.1);
-  box-shadow: 0 0 14px rgba(229, 9, 20, 0.5);
+  transform: scale(1.12);
+  box-shadow: 0 0 16px rgba(229, 9, 20, 0.55);
 }
 
 .row-scroll-controls .scroll-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.93);
 }
 
-/* Scroll Container with Touch-Native Snap - Scrollbars Hidden */
+/* ============================================================
+   SCROLL CONTAINER — Hidden Scrollbars
+   ============================================================ */
+
 .media-row-scroll,
 .movie-row {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   overflow-x: auto;
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
-  padding: 6px 2px 14px;
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE/Edge */
+  padding: 8px 4px 18px;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 .media-row-scroll::-webkit-scrollbar,
 .movie-row::-webkit-scrollbar {
-  display: none !important; /* Chrome/Safari/Opera */
+  display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-/* Card Styling */
+/* ============================================================
+   MEDIA CARD — Base
+   ============================================================ */
+
 .media-card {
-  flex: 0 0 180px;
+  flex: 0 0 168px;
   scroll-snap-align: start;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #13131b;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s ease;
+  will-change: transform;
 }
 
 .media-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px) scale(1.015);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55),
+              0 0 0 1px rgba(229, 9, 20, 0.25);
+  border-color: rgba(229, 9, 20, 0.4);
 }
+
+/* ============================================================
+   CARD POSTER — Image Area
+   ============================================================ */
 
 .card-poster {
   position: relative;
-  aspect-ratio: 2 / 3;
-  border-radius: 8px;
+  width: 100%;
+  height: 252px;
   overflow: hidden;
-  background-color: #1a1a24;
+  background: #1a1a26;
+  flex-shrink: 0;
 }
 
 .card-poster img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.media-card:hover .card-poster img {
+  transform: scale(1.07);
+}
+
+/* Cinematic bottom gradient over poster */
+.card-poster::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(8, 8, 14, 0.75) 100%
+  );
+  pointer-events: none;
+}
+
+/* No-image fallback */
 .poster-placeholder {
   display: grid;
   place-items: center;
   height: 100%;
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: rgba(255, 255, 255, 0.3);
-  background: #14141e;
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, #14141e 0%, #1c1c2a 100%);
+  letter-spacing: -0.02em;
 }
+
+/* ============================================================
+   RATING BADGE — top-right of poster
+   ============================================================ */
 
 .card-rating {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(8, 8, 10, 0.82);
-  backdrop-filter: blur(4px);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(6, 6, 10, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(245, 197, 24, 0.3);
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: #f5c518;
+  letter-spacing: 0.02em;
 }
 
+/* ============================================================
+   CARD INFO — Title & Meta below poster
+   ============================================================ */
+
 .card-info {
-  margin-top: 0.5rem;
+  padding: 10px 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #13131b;
+  flex: 1;
 }
 
 .card-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #f0f1f5;
+  /* Two-line clamp — more readable than strict nowrap */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  letter-spacing: 0.005em;
+  transition: color 0.15s ease;
+}
+
+.media-card:hover .card-title {
+  color: #ffffff;
 }
 
 .card-meta {
-  font-size: 0.8rem;
-  color: #8a8a9a;
-  margin-top: 0.2rem;
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: #5a5a72;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-/* Skeleton Loading Shimmer */
+/* Subtle dot separator between year and type label */
+.card-meta::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #e50914;
+  flex-shrink: 0;
+}
+
+.card-year {
+  color: #7a7a96;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.card-meta-sep {
+  color: #35354a;
+  font-size: 0.7rem;
+  user-select: none;
+}
+
+.card-type {
+  color: #4a4a62;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* ============================================================
+   SKELETON LOADING SHIMMER
+   Supports both .skeleton-card (JSX) and .card-skeleton (legacy)
+   ============================================================ */
+
 .media-row-skeleton {
   display: flex;
-  gap: 1.25rem;
+  gap: 14px;
   overflow: hidden;
+  padding: 8px 4px 18px;
 }
 
+.skeleton-row {
+  display: flex;
+  gap: 14px;
+  overflow: hidden;
+  padding: 8px 4px 18px;
+}
+
+.skeleton-card,
 .card-skeleton {
-  flex: 0 0 180px;
-  aspect-ratio: 2 / 3;
-  border-radius: 8px;
-  background: linear-gradient(90deg, #181824 25%, #222234 50%, #181824 75%);
+  flex: 0 0 168px;
+  height: 252px;
+  border-radius: 10px;
+  background: linear-gradient(
+    100deg,
+    #13131b 20%,
+    #1e1e2d 40%,
+    #13131b 60%
+  );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: card-shimmer 1.6s ease-in-out infinite;
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
+@keyframes card-shimmer {
+  0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.empty-state {
+  color: #4a4a5e;
+  font-size: 0.88rem;
+  padding: 10px 2px;
+  margin: 0;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
 @media (max-width: 600px) {
-  .media-card, .card-skeleton {
-    flex: 0 0 130px;
+  .media-card,
+  .skeleton-card,
+  .card-skeleton {
+    flex: 0 0 128px;
+  }
+
+  .card-poster {
+    height: 192px;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+  }
+
+  .card-meta {
+    font-size: 0.68rem;
+  }
+
+  .skeleton-card,
+  .card-skeleton {
+    height: 192px;
   }
 }

@@ -13,8 +13,13 @@ function MediaCard({ item, mediaType }) {
 
   const poster = item.poster_path || item.backdrop_path;
   const title = item.name || item.Title || item.title || 'Untitled';
-  const year = item.first_air_date?.slice(0, 4) || item.release_date?.slice(0, 4) || item.Year || '';
+  const year =
+    item.first_air_date?.slice(0, 4) ||
+    item.release_date?.slice(0, 4) ||
+    item.Year ||
+    '';
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
+  const typeLabel = resolvedType === 'series' ? 'TV' : 'Film';
 
   return (
     <Link to={`/${resolvedType}/${item.id}`} className="media-card">
@@ -33,9 +38,16 @@ function MediaCard({ item, mediaType }) {
         )}
         {rating && <span className="card-rating">★ {rating}</span>}
       </div>
+
       <div className="card-info">
         <h3 className="card-title">{title}</h3>
-        {year && <p className="card-meta">{year}</p>}
+        {(year || typeLabel) && (
+          <p className="card-meta">
+            {year && <span className="card-year">{year}</span>}
+            {year && typeLabel && <span className="card-meta-sep" aria-hidden="true">·</span>}
+            {typeLabel && <span className="card-type">{typeLabel}</span>}
+          </p>
+        )}
       </div>
     </Link>
   );

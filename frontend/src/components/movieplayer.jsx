@@ -17,8 +17,8 @@ const SERVERS = [
   {
     id: 'autoembed',
     name: 'Server 3 (AutoEmbed)',
-    getMovieUrl: (id) => `https://player.autoembed.cc/embed/movie/${id}`,
-    getTvUrl: (id, s, e) => `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`
+    getMovieUrl: (id) => `https://vaplayer.ru/embed/movie/${id}`,
+    getTvUrl: (id, s, e) => `https://vaplayer.ru/embed/tv/${id}/${s}/${e}`
   },
   {
     id: 'smashystream',

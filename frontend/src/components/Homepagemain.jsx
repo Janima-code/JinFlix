@@ -1,6 +1,6 @@
 import './Homepagemain.css';
-import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import MediaRow from './MediaRow';
 import HeroBanner from './HeroBanner';
@@ -83,23 +83,55 @@ function Main({ mediaType = 'all' }) {
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discoverError, setDiscoverError] = useState('');
 
-  // UI & Filter States
+  // UI & Filter States — stored in URL so they survive back-navigation
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedGenre, setSelectedGenre] = useState('All');
-  const [selectedLanguage, setSelectedLanguage] = useState('All');
-  const [minRating, setMinRating] = useState('0');
+
+  // Read initial values from URL (or fallback defaults)
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('q') || '');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('cat') || 'All');
+  const [selectedGenre, setSelectedGenre] = useState(() => searchParams.get('genre') || 'All');
+  const [selectedLanguage, setSelectedLanguage] = useState(() => searchParams.get('lang') || 'All');
+  const [minRating, setMinRating] = useState(() => searchParams.get('rating') || '0');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(true);
 
-  // Debounce search input
+  // Keep URL in sync whenever filters change
+  useEffect(() => {
+    const params = {};
+    if (searchTerm) params.q = searchTerm;
+    if (selectedCategory !== 'All') params.cat = selectedCategory;
+    if (selectedGenre !== 'All') params.genre = selectedGenre;
+    if (selectedLanguage !== 'All') params.lang = selectedLanguage;
+    if (minRating !== '0') params.rating = minRating;
+    setSearchParams(params, { replace: true });
+  }, [searchTerm, selectedCategory, selectedGenre, selectedLanguage, minRating]);
+
+  // Cursor position preservation for the search input
+  const searchInputRef = useRef(null);
+  const cursorPosRef = useRef(null);
+
+  // Capture cursor before each render caused by searchInput changes
+  const handleSearchChange = (e) => {
+    cursorPosRef.current = e.target.selectionStart;
+    setSearchInput(e.target.value);
+  };
+
+  // Restore cursor synchronously after React reconciles the DOM
+  useLayoutEffect(() => {
+    const el = searchInputRef.current;
+    if (el && cursorPosRef.current !== null && document.activeElement === el) {
+      el.setSelectionRange(cursorPosRef.current, cursorPosRef.current);
+    }
+  }, [searchInput]);
+
+  // Debounce: wait 700ms after the user stops typing before firing the search
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchTerm(searchInput.trim());
-    }, 400);
+    }, 700);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
@@ -260,19 +292,25 @@ function Main({ mediaType = 'all' }) {
     return ['All', ...new Set(allCatalogItems.map((i) => (i.original_language || 'en').toUpperCase()).filter(Boolean))];
   }, [allCatalogItems]);
 
-  // Filter Helper
+  // Filter Helper — all active conditions are AND-combined
   const applyFilters = (items) => {
     return items.filter((item) => {
+      // Search term must match title (if a search is active)
+      const title = (item.Title || item.title || item.name || '').toLowerCase();
+      const matchesSearch = !searchTerm || title.includes(searchTerm.toLowerCase());
+
       const itemCategories = item.Genre ? item.Genre.split(',').map((g) => g.trim()) : [];
       const selectedGenres = CATEGORY_GENRE_ALIASES[selectedCategory] || [selectedCategory];
       const matchesCategory = selectedCategory === 'All' || selectedGenres.some((g) => itemCategories.includes(g));
 
       const matchesGenre = selectedGenre === 'All' || itemCategories.includes(selectedGenre);
       const matchesRating = Number(item.vote_average || 0) >= Number(minRating || 0);
-      const itemLanguage = (item.original_language || 'en').toUpperCase();
-      const matchesLanguage = selectedLanguage === 'All' || itemLanguage === selectedLanguage;
 
-      return matchesCategory && matchesGenre && matchesRating && matchesLanguage;
+      // Language: TMDB returns ISO 639-1 codes (e.g. 'en', 'ko'); compare case-insensitively
+      const itemLanguage = (item.original_language || 'en').toUpperCase();
+      const matchesLanguage = selectedLanguage === 'All' || itemLanguage === selectedLanguage.toUpperCase();
+
+      return matchesSearch && matchesCategory && matchesGenre && matchesRating && matchesLanguage;
     });
   };
 
@@ -421,11 +459,12 @@ function Main({ mediaType = 'all' }) {
       <div className="search-panel">
         <div className="search-input-wrap">
           <input
+            ref={searchInputRef}
             type="text"
             className="search-input"
             placeholder="Search movies or TV shows by title..."
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={handleSearchChange}
             onFocus={() => setShowSuggestions(true)}
           />
 

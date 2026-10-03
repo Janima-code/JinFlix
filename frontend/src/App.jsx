@@ -4,6 +4,7 @@ import MovieDetailPage from './pages/MovieDetailPage';
 import SeriesDetailPage from './pages/SeriesDetailPage';
 import TrailerPage from './pages/TrailerPage';
 import WatchPage from './pages/WatchPage'; // New standalone watch page
+import MyListPage from './pages/MyListPage';
 import { MediaStateProvider } from './context/MediaStateContext';
 
 export default function App() {
@@ -21,6 +22,9 @@ export default function App() {
         {/* Standalone Player Routes */}
         <Route path="/trailer/:type/:id" element={<TrailerPage />} />
         <Route path="/watch/:type/:id" element={<WatchPage />} />
+
+        {/* My List */}
+        <Route path="/my-list" element={<MyListPage />} />
       </Routes>
       </MediaStateProvider>
     
