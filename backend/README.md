@@ -123,11 +123,50 @@ so the series page can render "no episodes listed" instead of an error.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `TMDB_API_KEY` | — | TMDb key. Required. |
-| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed origins. Set this in production. |
+| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed origins. **Required for any deployed frontend.** |
 
 Credentials are only enabled when the origin list is explicit. A wildcard
 origin combined with credentials is rejected by browsers, so the two are not
 enabled together.
+
+### Deploying the frontend and API to different domains
+
+The frontend and the API must be able to call each other cross-origin, so the
+API's origin list has to name the frontend's origin. Unset, the API allows only
+localhost and a deployed frontend is blocked by the browser:
+
+```
+Access to fetch at 'https://api.example.com/api/catalog' from origin
+'https://app.example.com' has been blocked by CORS policy: No
+'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+Set the variable on the API host (Render, Railway, Fly, Cloud Run, ...):
+
+```
+CORS_ORIGINS=https://jinflix.vercel.app,https://www.jinflix.vercel.app
+```
+
+Rules that trip this up:
+
+- Origins are **exact and case-sensitive**: scheme, host, and port must match
+  what the browser sends. Use `https://` for the deployed site, not `http://`.
+- Include the `www.` host as a separate entry if it is a different site.
+- No trailing slash, and no path (`https://app.vercel.app`, not
+  `https://app.vercel.app/`).
+- A disallowed origin gets a normal `200` with no `Access-Control-Allow-Origin`
+  header, so the API logs stay clean and only the browser reports it. The
+  service therefore logs its effective origin list at startup and warns loudly
+  when `CORS_ORIGINS` is unset — check the API host's logs first.
+
+To confirm from a shell before blaming the browser:
+
+```bash
+curl -i -H "Origin: https://jinflix.vercel.app" https://<api-host>/api/providers
+```
+
+A `200` with the header present is working; no header means the origin is not
+in the list.
 
 ## CLI
 

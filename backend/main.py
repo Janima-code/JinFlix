@@ -9,6 +9,7 @@ browser must not duplicate:
 The frontend calls these routes instead of TMDb directly.
 """
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -18,6 +19,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import tmdb_service
+
+# Uvicorn already configures this logger with handlers and level, so startup
+# notes land in the host's log stream instead of being dropped.
+logger = logging.getLogger("uvicorn.error")
 
 # Embed providers. This list is the single source of truth for playback URLs.
 PROVIDERS = [
@@ -68,8 +73,27 @@ def _cors_origins() -> List[str]:
     return DEFAULT_ORIGINS
 
 
+def _log_cors_configuration(origins: List[str]) -> None:
+    """Report the allowed origins at boot.
+
+    A disallowed origin gets a 200 with no ``Access-Control-Allow-Origin``
+    header, which the browser reports only as a generic CORS error. Logging the
+    effective list turns that into something readable in the host's logs.
+    """
+    configured = bool(os.getenv("CORS_ORIGINS"))
+    logger.info("CORS allowed origins: %s", ", ".join(origins) or "(none)")
+    if not configured:
+        logger.warning(
+            "CORS_ORIGINS is not set, so only %s may call this API. A deployed "
+            "frontend on another domain will be blocked by the browser. Set "
+            "CORS_ORIGINS to its origin, e.g. https://your-app.vercel.app",
+            ", ".join(origins),
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    _log_cors_configuration(origins)
     yield
     await tmdb_service.close_client()
 
