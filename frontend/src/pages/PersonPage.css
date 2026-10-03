@@ -1,0 +1,291 @@
+/* ============================================
+   PERSON PAGE
+   Cast & crew profiles reached from the movie and series cast rows.
+   Shares the movie detail page palette so the two read as one product.
+   ============================================ */
+
+body:not([data-theme='light']),
+body[data-theme='dark'] {
+  --person-bg: #0b0b0f;
+  --person-surface: #14171d;
+  --person-surface-raised: #1b2028;
+  --person-border: #303844;
+  --person-text: #f4f6f8;
+  --person-text-muted: #b5bfcb;
+  --person-accent: #ef3947;
+  --person-accent-hover: #ff5965;
+  --person-radius: 12px;
+  --person-radius-small: 8px;
+  --person-shadow: 0 20px 52px rgba(0, 0, 0, 0.38);
+  --person-space-1: 0.375rem;
+  --person-space-2: 0.625rem;
+  --person-space-3: 0.875rem;
+  --person-space-4: 1.125rem;
+  --person-space-5: 1.5rem;
+  --person-space-6: 2rem;
+  --person-space-7: 3rem;
+  --person-focus: #ff7c85;
+}
+
+body[data-theme='light'] {
+  --person-bg: #f3f5f8;
+  --person-surface: #fff;
+  --person-surface-raised: #e9eef4;
+  --person-border: #cbd4df;
+  --person-text: #18212c;
+  --person-text-muted: #4d5c6c;
+  --person-accent: #b52232;
+  --person-accent-hover: #8f1927;
+  --person-shadow: 0 18px 44px rgba(20, 31, 46, 0.16);
+  --person-focus: #92202d;
+}
+
+.person-page {
+  min-height: 100vh;
+  padding: var(--person-space-5) clamp(16px, 4vw, 52px) var(--person-space-7);
+  color: var(--person-text);
+  background: var(--person-bg);
+}
+
+.person-page :is(h1, h2, p, dd) {
+  overflow-wrap: anywhere;
+}
+
+.person-page :is(a, button):focus-visible {
+  outline: 3px solid var(--person-focus);
+  outline-offset: 3px;
+}
+
+/* ---------- Hero ---------- */
+
+.person-hero {
+  position: relative;
+  isolation: isolate;
+  width: min(1280px, 100%);
+  margin: 0 auto var(--person-space-5);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 130% at 12% 0%, rgba(239, 57, 71, 0.22) 0%, rgba(11, 11, 15, 0) 62%),
+    linear-gradient(180deg, var(--person-surface) 0%, var(--person-bg) 100%);
+  border: 1px solid var(--person-border);
+  border-radius: var(--person-radius);
+  box-shadow: var(--person-shadow);
+}
+
+.person-hero::before {
+  position: absolute;
+  z-index: 0;
+  background: linear-gradient(0deg, rgba(5, 7, 10, 0.55) 0%, rgba(5, 7, 10, 0) 68%);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+}
+
+.person-hero-inner {
+  position: relative;
+  z-index: 1;
+  padding: var(--person-space-5) clamp(16px, 3vw, 40px) var(--person-space-6);
+}
+
+.person-hero-grid {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: clamp(20px, 3vw, 40px);
+  align-items: start;
+}
+
+.person-portrait-wrap {
+  width: 200px;
+}
+
+.person-portrait {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--person-surface-raised);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--person-radius);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+}
+
+.person-hero-content {
+  min-width: 0;
+}
+
+.person-kicker {
+  display: inline-block;
+  margin: 0 0 var(--person-space-2);
+  padding: 5px 12px;
+  color: var(--person-text);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(239, 57, 71, 0.16);
+  border: 1px solid var(--person-accent);
+  border-radius: 999px;
+}
+
+.person-hero-content h1 {
+  margin: 0 0 var(--person-space-4);
+  color: var(--person-text);
+  font-size: clamp(1.9rem, 4.2vw, 3rem);
+  font-weight: 850;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Facts ---------- */
+
+.person-facts {
+  display: grid;
+  gap: var(--person-space-4);
+  margin: 0;
+}
+
+.person-facts dt {
+  color: var(--person-text-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.person-facts dd {
+  margin: 3px 0 0;
+  color: var(--person-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.person-tally {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  color: var(--person-text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ---------- Biography ---------- */
+
+.person-section {
+  width: min(1280px, 100%);
+  margin: var(--person-space-7) auto 0;
+}
+
+.person-section > h2 {
+  margin: 0 0 var(--person-space-4);
+  color: var(--person-text);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.person-bio-text {
+  max-width: 74ch;
+  margin: 0 0 var(--person-space-4);
+  color: var(--person-text-muted);
+  font-size: 1rem;
+  line-height: 1.78;
+}
+
+.person-bio-text:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Links ---------- */
+
+.person-back-link,
+.person-btn-secondary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  color: var(--person-text);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--person-surface-raised);
+  border: 1px solid var(--person-border);
+  border-radius: var(--person-radius-small);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    transform 160ms ease, box-shadow 160ms ease;
+}
+
+.person-back-link {
+  margin: 0 0 var(--person-space-5);
+  color: var(--person-text-muted);
+}
+
+.person-back-link:hover,
+.person-btn-secondary:hover {
+  color: #fff;
+  background: var(--person-accent);
+  border-color: var(--person-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(239, 57, 71, 0.28);
+}
+
+.person-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--person-space-3);
+  width: min(1280px, 100%);
+  margin: var(--person-space-7) auto 0;
+}
+
+/* ---------- Loading and error ---------- */
+
+.person-state {
+  display: grid;
+  min-height: 48vh;
+  place-content: center;
+  justify-items: center;
+  gap: var(--person-space-3);
+  color: var(--person-text);
+  text-align: center;
+}
+
+.person-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--person-border);
+  border-top-color: var(--person-accent);
+  border-radius: 50%;
+  animation: person-spin 0.8s linear infinite;
+}
+
+@keyframes person-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .person-spinner {
+    animation: none;
+  }
+
+  .person-back-link,
+  .person-btn-secondary {
+    transition: none;
+  }
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 760px) {
+  .person-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .person-portrait-wrap {
+    width: 148px;
+  }
+}

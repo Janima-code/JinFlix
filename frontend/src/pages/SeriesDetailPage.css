@@ -478,6 +478,25 @@ body[data-theme='light'] {
   border: 1px solid var(--series-border);
   border-radius: var(--series-radius);
   scroll-snap-align: start;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+/* The whole card is the link to the person's page. */
+.series-cast-card .detail-author-link {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--series-space-3);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.series-cast-card:hover {
+  border-color: var(--series-accent);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
 }
 
 .series-cast-card .detail-author-image {

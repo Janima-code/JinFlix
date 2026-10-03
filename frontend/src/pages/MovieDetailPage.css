@@ -355,9 +355,22 @@ body[data-theme='light'] {
   border: 1px solid var(--movie-border);
   border-radius: var(--movie-radius-small);
   scroll-snap-align: start;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
-.movie-cast-card img {
+.movie-cast-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.movie-cast-card:hover {
+  border-color: var(--movie-accent);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.32);
+}
+
+.movie-cast-link img {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 5;
@@ -365,7 +378,7 @@ body[data-theme='light'] {
   background: var(--movie-surface-raised);
 }
 
-.movie-cast-card div {
+.movie-cast-link div {
   padding: var(--movie-space-3);
 }
 

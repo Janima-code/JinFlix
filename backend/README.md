@@ -63,6 +63,12 @@ Interactive docs: http://localhost:8000/docs
 always present in the response; a row that fails upstream comes back empty
 rather than failing the request.
 
+A row name this API does not recognise comes back empty too, and the others
+still load. That keeps a version skew harmless: a deployed frontend that is
+newer than the deployed API asks for a row the API has not shipped yet, and
+only that one row is missing instead of the whole catalog erroring out. A
+request where *no* row is recognised is a genuine `400`.
+
 ### Keyword-driven rows
 
 Two rows are driven by TMDb keywords rather than genres, because TMDb has no

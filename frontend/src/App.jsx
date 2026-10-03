@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Homepage from './pages/Homepage';
 import MovieDetailPage from './pages/MovieDetailPage';
 import SeriesDetailPage from './pages/SeriesDetailPage';
+import PersonPage from './pages/PersonPage';
 import TrailerPage from './pages/TrailerPage';
 import WatchPage from './pages/WatchPage';
 import MyListPage from './pages/MyListPage';
@@ -18,6 +19,7 @@ export default function App() {
         {/* Detail Routes */}
         <Route path="/movie/:id" element={<MovieDetailPage />} />
         <Route path="/series/:id" element={<SeriesDetailPage />} />
+        <Route path="/person/:id" element={<PersonPage />} />
 
         {/* Standalone Player Routes */}
         <Route path="/trailer/:type/:id" element={<TrailerPage />} />

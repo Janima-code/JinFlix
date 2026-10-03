@@ -268,6 +268,28 @@ async def get_series_season(series_id: int, season_number: int):
     return await tmdb_service.get_season_details(series_id, season_number)
 
 
+# --- People -----------------------------------------------------------------
+
+
+@app.get("/api/person/{person_id}")
+async def get_person(person_id: int):
+    """Biography and vital details for one actor, director, or writer."""
+    return await tmdb_service.get_person_details(person_id)
+
+
+@app.get("/api/person/{person_id}/credits")
+async def get_person_credits(
+    person_id: int,
+    media_type: str = "all",
+    limit: int = Query(60, ge=1, le=200),
+):
+    """Titles a person is credited on, as ordinary media cards."""
+    try:
+        return await tmdb_service.get_person_credits(person_id, media_type, limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 if __name__ == "__main__":
     import uvicorn
 

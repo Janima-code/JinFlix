@@ -149,7 +149,6 @@ export default function MovieDetailPage() {
 
             {movie.legal_providers.length > 0 && (
               <div className="movie-genres">
-                <span className="movie-provider-label">Streaming on</span>
                 {movie.legal_providers.map((provider) => (
                   <span key={provider.id}>{provider.name}</span>
                 ))}
@@ -229,16 +228,22 @@ export default function MovieDetailPage() {
           <ul className="movie-cast-row">
             {movie.cast.map((person) => (
               <li key={person.id} className="movie-cast-card">
-                <img
-                  src={person.profile || FALLBACK_PROFILE}
-                  alt={person.name}
-                  loading="lazy"
-                  decoding="async"
-                />
-                <div>
-                  <h3>{person.name}</h3>
-                  <p>{person.character}</p>
-                </div>
+                <Link
+                  to={`/person/${person.id}`}
+                  className="movie-cast-link"
+                  aria-label={`View ${person.name}'s profile`}
+                >
+                  <img
+                    src={person.profile || FALLBACK_PROFILE}
+                    alt={person.name}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div>
+                    <h3>{person.name}</h3>
+                    <p>{person.character}</p>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>

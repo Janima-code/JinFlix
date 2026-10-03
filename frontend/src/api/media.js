@@ -96,3 +96,17 @@ export function getSeasonEpisodes(seriesId, seasonNumber, options) {
     options,
   );
 }
+
+/** Biography, portrait, and vital details for a cast or crew member. */
+export function getPerson(personId, options) {
+  return getJson(`/api/person/${personId}`, undefined, options);
+}
+
+/** Resolves to `{ movies: [...], tv_series: [...] }` of ordinary cards. */
+export function getPersonCredits(personId, { mediaType = 'all', limit } = {}, options) {
+  return getJson(
+    `/api/person/${personId}/credits`,
+    { media_type: mediaType, limit },
+    options,
+  );
+}

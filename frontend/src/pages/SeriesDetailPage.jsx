@@ -522,22 +522,28 @@ function SeriesDetailPage() {
           <div className="detail-author-grid series-cast-grid">
             {series.cast.map((person) => (
               <article key={person.id} className="detail-author-card series-cast-card">
-                <img
-                  src={person.profile || FALLBACK_PROFILE}
-                  alt={person.name}
-                  className="detail-author-image"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <div className="detail-author-content">
-                  <div className="detail-author-head">
-                    <h3>{person.name}</h3>
-                    <span>{person.character}</span>
+                <Link
+                  to={`/person/${person.id}`}
+                  className="detail-author-link"
+                  aria-label={`View ${person.name}'s profile`}
+                >
+                  <img
+                    src={person.profile || FALLBACK_PROFILE}
+                    alt={person.name}
+                    className="detail-author-image"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="detail-author-content">
+                    <div className="detail-author-head">
+                      <h3>{person.name}</h3>
+                      <span>{person.character}</span>
+                    </div>
+                    {person.total_episode_count ? (
+                      <p>{person.total_episode_count} episodes</p>
+                    ) : null}
                   </div>
-                  {person.total_episode_count ? (
-                    <p>{person.total_episode_count} episodes</p>
-                  ) : null}
-                </div>
+                </Link>
               </article>
             ))}
           </div>

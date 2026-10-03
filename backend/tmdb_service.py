@@ -16,12 +16,16 @@ Consumers should never need to guess which field holds the title.
 """
 
 import asyncio
+import logging
 import os
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import httpx
+
+# Uvicorn configures this logger, so warnings land in the host's log stream.
+logger = logging.getLogger("uvicorn.error")
 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p"
@@ -308,6 +312,11 @@ async def get_catalog_rows(
     ``anime_movies``, ...). Every row is resolved independently; a failing row
     comes back as an empty list, so a row with no TMDb data simply renders as
     nothing rather than an error.
+
+    A row name this version does not know is skipped rather than rejected. The
+    deployed frontend can be newer than the deployed API — asking for a row the
+    API has not shipped yet must not take down the rows it does know, which
+    would blank the whole catalog.
     """
     if genre_map is None:
         movie_map, tv_map = await asyncio.gather(
@@ -331,8 +340,17 @@ async def get_catalog_rows(
 
     known = [row for row in rows if row in endpoint_specs]
     unknown = [row for row in rows if row not in endpoint_specs]
+
     if unknown:
-        raise ValueError(f"Unknown catalog rows: {', '.join(unknown)}")
+        # Nothing recognized means the caller is asking for something entirely
+        # unsupported, which is a bad request rather than a version skew.
+        if not known:
+            raise ValueError(f"Unknown catalog rows: {', '.join(unknown)}")
+        logger.warning(
+            "Ignoring unknown catalog rows %s; this API knows %s",
+            ", ".join(unknown),
+            ", ".join(sorted(endpoint_specs)),
+        )
 
     payloads = await asyncio.gather(
         *(
@@ -632,6 +650,102 @@ async def get_season_details(series_id: int, season_number: int) -> Dict[str, An
 
     _set_cache(cache_key, result)
     return result
+
+
+async def get_person_details(person_id: int) -> Dict[str, Any]:
+    """Biography, portrait, and vital details for one cast or crew member."""
+    cache_key = f"person:{person_id}"
+    cached = _get_from_cache(cache_key)
+    if cached is not None:
+        return cached
+
+    payload = await _tmdb_get(f"/person/{person_id}")
+
+    biography = (payload.get("biography") or "").strip()
+    birthday = payload.get("birthday") or None
+    deathday = payload.get("deathday") or None
+
+    result = {
+        "id": payload.get("id"),
+        "name": payload.get("name") or "Unknown",
+        "biography": biography,
+        "profile": format_poster(payload.get("profile_path"), size="w500"),
+        "known_for_department": payload.get("known_for_department") or "",
+        "gender": payload.get("gender"),
+        "birthday": birthday,
+        "deathday": deathday,
+        "place_of_birth": payload.get("place_of_birth") or "",
+        "homepage": payload.get("homepage") or "",
+        "imdb_id": payload.get("imdb_id") or "",
+        "popularity": payload.get("popularity", 0.0),
+        "also_known_as": [
+            name for name in (payload.get("also_known_as") or []) if name.strip()
+        ],
+    }
+
+    _set_cache(cache_key, result)
+    return result
+
+
+async def get_person_credits(
+    person_id: int, media_type: str = "all", limit: int = 60
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Titles a person is credited on, split into movies and TV.
+
+    TMDb returns one credit list per role (cast and crew) and mixes in entries
+    with no release date, so both lists are merged, de-duplicated by TMDb id,
+    and sorted newest-first before being handed back as ordinary cards.
+    """
+    normalized = _normalize_type(media_type)
+    if media_type != "all" and normalized is None:
+        raise ValueError(f"Unsupported media_type: {media_type}")
+
+    wanted = {normalized} if normalized else {"movie", "tv"}
+    cache_key = f"person-credits:{person_id}:{'|'.join(sorted(wanted))}:{limit}"
+    cached = _get_from_cache(cache_key)
+    if cached is not None:
+        return cached
+
+    # Ordered so the credits stay de-duplicated in a predictable order.
+    sources = [
+        ("movie", f"/person/{person_id}/movie_credits", ("cast", "crew")),
+        ("tv", f"/person/{person_id}/tv_credits", ("cast", "crew", "guest_stars")),
+    ]
+    selected = [source for source in sources if source[0] in wanted]
+
+    responses = await asyncio.gather(
+        *(
+            _cached_list(endpoint, {}, cache_key=f"credits:{person_id}:{kind}")
+            for kind, endpoint, _ in selected
+        )
+    )
+
+    movie_map, tv_map = await asyncio.gather(get_genre_map("movie"), get_genre_map("tv"))
+    genre_maps = {"movie": movie_map, "tv": tv_map}
+
+    grouped: Dict[str, List[Dict[str, Any]]] = {"movies": [], "tv_series": []}
+    seen: set = set()
+
+    for (kind, _, buckets), payload in zip(selected, responses):
+        # Crew entries carry no character, and TMDb already orders cast by
+        # billing, so keeping the first occurrence per title is enough.
+        entries: List[Dict[str, Any]] = []
+        for bucket in buckets:
+            entries.extend((payload or {}).get(bucket) or [])
+        for entry in entries:
+            if not entry.get("id") or entry["id"] in seen:
+                continue
+            seen.add(entry["id"])
+            card = normalize_card(entry, kind, genre_maps[kind])
+            grouped["movies" if kind == "movie" else "tv_series"].append(card)
+
+    # Newest first, so undated entries (episodes, shorts) sort last.
+    for cards in grouped.values():
+        cards.sort(key=lambda card: (card["release_date"] or "", card["rating"]), reverse=True)
+        del cards[limit:]
+
+    _set_cache(cache_key, grouped)
+    return grouped
 
 
 async def get_recommendations(media_type: str, tmdb_id: int) -> List[Dict[str, Any]]:

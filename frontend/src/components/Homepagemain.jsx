@@ -33,6 +33,21 @@ const MOVIE_ROWS = ['trending_movies', 'upcoming_movies', 'cutie_movies', 'anime
 const SERIES_ROWS = ['popular_series', 'trending_series', 'top_rated_series', 'airing_today_series'];
 const ALL_ROWS = [...MOVIE_ROWS, ...SERIES_ROWS];
 
+// Rows are requested in small batches rather than one big call. A cold start on
+// a free-tier host can push a wide request past the proxy's timeout, and a
+// single failed call used to blank every row at once — the page fell back to
+// the bundled catalog and only Trending/Upcoming Movies survived. Independent
+// batches limit that blast radius to the batch that actually failed.
+const ROW_BATCH_SIZE = 2;
+
+function rowBatches(rows) {
+  const batches = [];
+  for (let i = 0; i < rows.length; i += ROW_BATCH_SIZE) {
+    batches.push(rows.slice(i, i + ROW_BATCH_SIZE));
+  }
+  return batches;
+}
+
 const SORT_OPTIONS = [
   ['popularity.desc', 'Most Popular'],
   ['vote_average.desc', 'Top Rated'],
@@ -151,7 +166,8 @@ function Main({ mediaType = 'all' }) {
   const catalogGuard = useMemo(() => createRequestGuard(), []);
   useEffect(() => () => catalogGuard.abort(), [catalogGuard]);
 
-  // One request per load instead of eleven parallel TMDb calls.
+  // A few small batched requests per load, so one slow or failing batch cannot
+  // take the whole catalog down with it.
   useEffect(() => {
     const signal = catalogGuard.start();
     let active = true;
@@ -174,8 +190,23 @@ function Main({ mediaType = 'all' }) {
         }
 
         setSearchResults({ movies: [], series: [] });
-        const data = await getCatalogRows(rowsForMediaType(mediaType), { signal });
+
+        const batches = rowBatches(rowsForMediaType(mediaType));
+        const settled = await Promise.allSettled(
+          batches.map((batch) => getCatalogRows(batch, { signal })),
+        );
         if (!active) return;
+
+        // A batch that failed leaves its rows absent, which the row renderers
+        // treat as empty. Only a total failure means the API is unreachable.
+        if (settled.every((outcome) => outcome.status === 'rejected')) {
+          throw settled[0].reason;
+        }
+
+        const data = {};
+        for (const outcome of settled) {
+          if (outcome.status === 'fulfilled') Object.assign(data, outcome.value);
+        }
         setRows(withFallback(data));
       } catch (err) {
         if (!active || isAbortError(err)) return;
