@@ -11,7 +11,7 @@ import {
   Pause,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useMediaState } from '../context/MediaStateContext';
+import { useMediaState } from '../context/mediaState';
 import './HeroBanner.css';
 
 export const HeroBanner = ({
@@ -32,6 +32,7 @@ export const HeroBanner = ({
   const [isPaused, setIsPaused] = useState(false);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
   const [internalMuted, setInternalMuted] = useState(true);
+  const { bookmarks = [], toggleBookmark } = useMediaState();
 
   // Guard against out-of-bounds index
   useEffect(() => {
@@ -55,34 +56,26 @@ export const HeroBanner = ({
 
   const currentMovie = items[currentIndex] || items[0];
 
-  // Normalize current movie properties
-  const id = currentMovie.id || currentMovie.tmdb_id;
-  const title = currentMovie.title || currentMovie.name || currentMovie.Title || 'Featured Title';
-  const description = currentMovie.description || currentMovie.overview || currentMovie.Plot || 'No synopsis available.';
-  const backdrop = currentMovie.backdrop || (currentMovie.backdrop_path ? `https://image.tmdb.org/t/p/original${currentMovie.backdrop_path}` : currentMovie.poster || currentMovie.Poster);
-  const mediaType = currentMovie.mediaType || (currentMovie.first_air_date || currentMovie.seasons ? 'tv' : 'movie');
+  // Cards arrive normalized from the backend, so no field guessing is needed.
+  const id = currentMovie.id;
+  const title = currentMovie.title || 'Featured Title';
+  const description = currentMovie.overview || 'No synopsis available.';
+  const isSeries = currentMovie.media_type === 'tv';
+  const mediaType = isSeries ? 'tv' : 'movie';
+  const rating = Number(currentMovie.rating || 0);
 
-  // Match score calculation
-  const voteAvg = Number(currentMovie.vote_average || currentMovie.rating || 8.0);
-  const matchScore = currentMovie.matchScore || Math.min(99, Math.max(70, Math.round(voteAvg * 10)));
+  const matchScore = currentMovie.matchScore
+    ?? Math.min(99, Math.max(70, Math.round(rating * 10)));
 
-  // Release year
-  const releaseYear = currentMovie.releaseYear || (currentMovie.release_date || currentMovie.first_air_date || currentMovie.Year || '').slice(0, 4) || new Date().getFullYear();
+  const releaseYear = currentMovie.year && currentMovie.year !== 'N/A'
+    ? currentMovie.year
+    : String(new Date().getFullYear());
 
-  // Rating badge
-  const ratingBadge = currentMovie.rating && typeof currentMovie.rating === 'string' && currentMovie.rating.length <= 6
-    ? currentMovie.rating
-    : voteAvg > 0 ? `${voteAvg.toFixed(1)} ★` : 'PG-13';
-
-  // Duration
-  const duration = currentMovie.duration || (mediaType === 'tv' ? 'Series' : '2h 14m');
-
-  // Genres
-  const genres = Array.isArray(currentMovie.genres)
-    ? currentMovie.genres.map(g => (typeof g === 'object' ? g.name : g))
-    : typeof currentMovie.Genre === 'string'
-      ? currentMovie.Genre.split(',').map(g => g.trim())
-      : ['Action', 'Drama', 'Featured'];
+  const ratingBadge = rating > 0 ? `${rating.toFixed(1)} ★` : 'NR';
+  const duration = isSeries ? 'Series' : currentMovie.runtime || 'Feature';
+  const genres = Array.isArray(currentMovie.genres) && currentMovie.genres.length
+    ? currentMovie.genres
+    : ['Featured'];
 
   // Handlers
   const handlePlay = () => {
@@ -97,25 +90,21 @@ export const HeroBanner = ({
     if (onMoreInfo) {
       onMoreInfo(currentMovie);
     } else {
-      navigate(`/${mediaType === 'tv' ? 'series' : 'movie'}/${id}`);
+      navigate(`/${isSeries ? 'series' : 'movie'}/${id}`);
     }
   };
 
-  const mediaState = useMediaState();
-  const bookmarks = mediaState?.bookmarks || [];
-  const toggleBookmark = mediaState?.toggleBookmark;
-
-  const isCurrentInWatchlist = bookmarks.some((b) => String(b.id) === String(id)) || isInWatchlist;
+  const isCurrentInWatchlist = bookmarks.some((b) => String(b.id) === String(id) && (b.type === mediaType)) || isInWatchlist;
 
   const handleToggleWatchlist = () => {
     if (onToggleWatchlist) {
       onToggleWatchlist(currentMovie);
     } else if (toggleBookmark) {
       toggleBookmark({
-        id: currentMovie.id || currentMovie.tmdb_id,
+        id: currentMovie.id,
         type: mediaType,
-        title: title,
-        poster_path: currentMovie.poster_path || currentMovie.Poster || currentMovie.backdrop_path,
+        title: currentMovie.title,
+        poster: currentMovie.poster,
       });
     }
   };
@@ -148,13 +137,13 @@ export const HeroBanner = ({
       {/* Background Image / Backdrop with Fade Transition */}
       <div className="hero-backdrop-container absolute inset-0 z-0">
         {items.map((item, idx) => {
-          const bg = item.backdrop || (item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : item.poster || item.Poster);
+          const bg = item.backdrop || item.poster;
           const isCurrent = idx === currentIndex;
           return (
             <img
-              key={item.id || idx}
+              key={`${item.media_type}-${item.id}`}
               src={bg}
-              alt={item.title || item.name}
+              alt={item.title}
               referrerPolicy="no-referrer"
               className={`hero-backdrop-img hero-slide-bg ${isCurrent ? 'is-active-slide' : ''}`}
             />
@@ -269,18 +258,18 @@ export const HeroBanner = ({
           {/* Carousel Slide Indicators / Dots */}
           {items.length > 1 && (
             <div className="hero-carousel-dots">
-              {items.map((item, idx) => (
-                <button
-                  key={item.id || idx}
-                  type="button"
-                  onClick={() => setCurrentIndex(idx)}
-                  className={`hero-dot-bar ${idx === currentIndex ? 'is-active-dot' : ''}`}
-                  title={`Jump to ${item.title || item.name}`}
-                  aria-label={`Slide ${idx + 1}`}
-                >
-                  <span className="hero-dot-fill" />
-                </button>
-              ))}
+{items.map((item, idx) => (
+              <button
+                key={`${item.media_type}-${item.id}`}
+                type="button"
+                onClick={() => setCurrentIndex(idx)}
+                className={`hero-dot-bar ${idx === currentIndex ? 'is-active-dot' : ''}`}
+                title={`Jump to ${item.title}`}
+                aria-label={`Slide ${idx + 1}`}
+              >
+                <span className="hero-dot-fill" />
+              </button>
+            ))}
 
               <button
                 type="button"

@@ -1,7 +1,15 @@
 import './Header.css';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 
 function Header() {
+  const { search } = useLocation();
+
+  // Home, Movies and Series are three views of the same catalog, so they hand
+  // the active filters to each other. A bare `to="/movies"` drops the query
+  // string, which left the URL saying one thing and the mounted page still
+  // holding the previous filter until an effect silently reset it.
+  const catalogLink = (pathname) => ({ pathname, search });
+
   return (
     <header className="header-topbar-wrapper">
       <div className="header-topbar">
@@ -18,9 +26,9 @@ function Header() {
         </Link>
 
         <nav className="primary-nav" aria-label="Main navigation">
-          <NavLink to="/" end>Home</NavLink>
-          <NavLink to="/movies">Movies</NavLink>
-          <NavLink to="/series">Series</NavLink>
+          <NavLink to={catalogLink('/')} end>Home</NavLink>
+          <NavLink to={catalogLink('/movies')}>Movies</NavLink>
+          <NavLink to={catalogLink('/series')}>Series</NavLink>
           <NavLink to="/my-list">My List</NavLink>
         </nav>
 

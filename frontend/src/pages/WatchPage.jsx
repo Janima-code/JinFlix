@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,52 +14,18 @@ import {
   Maximize2,
   RefreshCw,
 } from 'lucide-react';
-import { useMediaState, getEpisodeProgressId } from '../context/MediaStateContext';
+import { getEpisodeProgressId, useMediaState } from '../context/mediaState';
+import {
+  getProviders,
+  getStreamUrl,
+  getMediaDetails,
+  getSeasonEpisodes,
+  toApiMediaType,
+  toRouteSegment,
+} from '../api/media';
+import { createRequestGuard, isAbortError } from '../api/requestGuard';
 import usePageMeta from '../hooks/usePageMeta';
 import './WatchPage.css';
-
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || 'e56f5c7830c1eb10f6ff78f42d8c8544';
-const BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
-// Available embed provider sources using TMDB IDs
-const EMBED_SERVERS = [
-  {
-    id: 'vidsrc-pm',
-    name: 'Server 1 (Alpha / VidSrc PM)',
-    badge: 'Alpha',
-    getMovieUrl: (id) => `https://vidsrc.pm/embed/movie/${id}`,
-    getTvUrl: (id, s, e) => `https://vidsrc.pm/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    id: 'vidlink',
-    name: 'Server 2 (Beta / VidLink)',
-    badge: 'Beta',
-    getMovieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=ef3947`,
-    getTvUrl: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=ef3947`,
-  },
-  {
-    id: 'vidsrc-cc',
-    name: 'Server 3 (VidSrc CC)',
-    badge: 'Fast',
-    getMovieUrl: (id) => `https://vidsrc.cc/v2/embed/movie/${id}`,
-    getTvUrl: (id, s, e) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    id: 'autoembed',
-    name: 'Server 4 (AutoEmbed)',
-    badge: 'Multi-Sub',
-    getMovieUrl: (id) => `https://player.autoembed.cc/embed/movie/${id}`,
-    getTvUrl: (id, s, e) => `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    id: 'smashystream',
-    name: 'Server 5 (SmashyStream)',
-    badge: 'Mirror',
-    getMovieUrl: (id) => `https://embed.smashystream.com/playere.php?tmdb=${id}`,
-    getTvUrl: (id, s, e) => `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`,
-  },
-];
 
 export default function WatchPage() {
   const { type = 'movie', id } = useParams();
@@ -67,127 +33,184 @@ export default function WatchPage() {
   const navigate = useNavigate();
   const iframeRef = useRef(null);
 
-  const isTv = type === 'tv' || type === 'series';
-  const mediaType = isTv ? 'tv' : 'movie';
-
-  const seasonNum = parseInt(searchParams.get('season') || '1', 10);
-  const episodeNum = parseInt(searchParams.get('episode') || '1', 10);
+  const isTv = toApiMediaType(type) === 'tv';
+  const seasonNum = Number.parseInt(searchParams.get('season') || '1', 10) || 1;
+  const episodeNum = Number.parseInt(searchParams.get('episode') || '1', 10) || 1;
 
   const [details, setDetails] = useState(null);
   const [seasonEpisodes, setSeasonEpisodes] = useState([]);
-  const [selectedServer, setSelectedServer] = useState(EMBED_SERVERS[0].id);
+  const [providers, setProviders] = useState([]);
+  const [selectedProvider, setSelectedProvider] = useState(null);
+  const [embedUrl, setEmbedUrl] = useState('');
   const [loading, setLoading] = useState(true);
-  const [theaterMode, setTheaterMode] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
 
-  const { bookmarks, toggleBookmark, episodeProgress, setEpisodeWatched } = useMediaState();
+  const { isBookmarked, toggleBookmark, episodeProgress, setEpisodeWatched } = useMediaState();
 
-  const isBookmarked = bookmarks?.some((b) => String(b.id) === String(id));
+  const bookmarkItem = { id, type: isTv ? 'tv' : 'movie' };
+  const bookmarked = isBookmarked(bookmarkItem);
   const progressKey = isTv ? getEpisodeProgressId(id, seasonNum, episodeNum) : null;
-  const isWatched = progressKey ? !!episodeProgress[progressKey] : false;
+  const isWatched = progressKey ? Boolean(episodeProgress[progressKey]) : false;
 
-  const title = details?.title || details?.name || 'Loading Stream...';
-  const detailPath = isTv ? `/series/${id}` : `/movie/${id}`;
-  const trailerPath = isTv ? `/trailer/tv/${id}` : `/trailer/movie/${id}`;
-
-  const currentEpisodeObj = seasonEpisodes.find((ep) => ep.episode_number === episodeNum);
-  const episodeTitle = currentEpisodeObj?.name || `Episode ${episodeNum}`;
+  const title = details?.title || 'Loading Stream...';
+  const detailPath = `/${toRouteSegment(isTv ? 'tv' : 'movie')}/${id}`;
+  const trailerPath = `/trailer/${isTv ? 'tv' : 'movie'}/${id}`;
+  const currentEpisode = seasonEpisodes.find((episode) => episode.episode_number === episodeNum);
 
   usePageMeta(
     details ? `Watch ${title}${isTv ? ` - S${seasonNum} E${episodeNum}` : ''} | JinFlix` : 'Watch Stream | JinFlix',
-    `Watch ${title} on JinFlix dedicated stream player.`
+    details ? `Watch ${title} on JinFlix.` : 'Watch a title on JinFlix.'
   );
 
-  // Fetch core media details
+  const detailsGuard = useMemo(() => createRequestGuard(), []);
+  const seasonGuard = useMemo(() => createRequestGuard(), []);
+  const providerGuard = useMemo(() => createRequestGuard(), []);
+
+  useEffect(() => () => {
+    detailsGuard.abort();
+    seasonGuard.abort();
+    providerGuard.abort();
+  }, [detailsGuard, seasonGuard, providerGuard]);
+
   useEffect(() => {
-    async function fetchDetails() {
-      setLoading(true);
-      try {
-        const res = await fetch(`${BASE_URL}/${mediaType}/${id}?api_key=${TMDB_API_KEY}`);
-        const data = await res.json();
-        setDetails(data);
-      } catch (err) {
-        console.error('Error fetching media details:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (!id) return undefined;
+
+    const signal = detailsGuard.start();
+    let active = true;
+
+    setLoading(true);
+
+    getMediaDetails(isTv ? 'tv' : 'movie', id, { signal })
+      .then((data) => {
+        if (active) setDetails(data);
+      })
+      .catch((err) => {
+        if (!active || isAbortError(err)) return;
+        setDetails(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, isTv, detailsGuard]);
+
+  useEffect(() => {
+    if (!isTv || !id) {
+      setSeasonEpisodes([]);
+      return undefined;
     }
 
-    if (id) fetchDetails();
-  }, [mediaType, id]);
+    const signal = seasonGuard.start();
+    let active = true;
 
-  // Fetch episodes for TV season
+    setSeasonEpisodes([]);
+
+    getSeasonEpisodes(id, seasonNum, { signal })
+      .then((data) => {
+        if (active) setSeasonEpisodes(data.episodes || []);
+      })
+      .catch((err) => {
+        if (!active || isAbortError(err)) return;
+        setSeasonEpisodes([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, isTv, seasonNum, seasonGuard]);
+
+  // Provider list comes from the backend, so the player and the API can never
+  // drift apart.
   useEffect(() => {
-    if (!isTv || !id) return;
-    async function fetchSeason() {
-      try {
-        const res = await fetch(`${BASE_URL}/tv/${id}/season/${seasonNum}?api_key=${TMDB_API_KEY}`);
-        const data = await res.json();
-        setSeasonEpisodes(data.episodes || []);
-      } catch (err) {
-        console.warn('Could not load season episodes:', err);
-      }
-    }
-    fetchSeason();
-  }, [id, isTv, seasonNum]);
+    const signal = providerGuard.start();
+    let active = true;
 
-  const activeServerObj = EMBED_SERVERS.find((s) => s.id === selectedServer) || EMBED_SERVERS[0];
+    getProviders({ signal })
+      .then((list) => {
+        if (active) setProviders(list);
+      })
+      .catch(() => {
+        if (active) setProviders([]);
+      });
 
-  const iframeSrc = isTv
-    ? activeServerObj.getTvUrl(id, seasonNum, episodeNum)
-    : activeServerObj.getMovieUrl(id);
+    return () => {
+      active = false;
+    };
+  }, [providerGuard]);
+
+  const activeProviderId = selectedProvider ?? providers[0]?.id ?? null;
+
+  // Resolve the embed URL server-side so templates stay out of the bundle.
+  useEffect(() => {
+    if (!id || !activeProviderId) return undefined;
+
+    const signal = providerGuard.start();
+    let active = true;
+
+    setEmbedUrl('');
+
+    getStreamUrl(
+      {
+        tmdbId: id,
+        providerId: activeProviderId,
+        mediaType: isTv ? 'tv' : 'movie',
+        season: seasonNum,
+        episode: episodeNum,
+      },
+      { signal }
+    )
+      .then((data) => {
+        if (active) setEmbedUrl(data.embed_url);
+      })
+      .catch((err) => {
+        if (!active || isAbortError(err)) return;
+        setEmbedUrl('');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, activeProviderId, isTv, seasonNum, episodeNum, providerGuard]);
 
   const handleToggleWatched = () => {
     if (!isTv) return;
     setEpisodeWatched(
       {
         seriesId: id,
+        seriesTitle: details?.title,
+        poster: details?.poster,
+        year: details?.year,
+        vote_average: details?.rating,
         seasonNumber: seasonNum,
         episodeNumber: episodeNum,
-        title: episodeTitle,
+        episodeTitle: currentEpisode?.name,
       },
       !isWatched
     );
   };
 
-  const handlePrevEpisode = () => {
-    if (episodeNum > 1) {
-      navigate(`/watch/tv/${id}?season=${seasonNum}&episode=${episodeNum - 1}`);
-    }
-  };
-
-  const handleNextEpisode = () => {
-    navigate(`/watch/tv/${id}?season=${seasonNum}&episode=${episodeNum + 1}`);
-  };
-
-  const handleReloadIframe = () => {
-    setIframeKey((prev) => prev + 1);
+  const goToEpisode = (nextEpisodeNum) => {
+    navigate(`/watch/tv/${id}?season=${seasonNum}&episode=${nextEpisodeNum}`);
   };
 
   const handleFullscreen = () => {
-    if (iframeRef.current) {
-      if (iframeRef.current.requestFullscreen) {
-        iframeRef.current.requestFullscreen();
-      } else if (iframeRef.current.webkitRequestFullscreen) {
-        iframeRef.current.webkitRequestFullscreen();
-      }
-    }
+    const frame = iframeRef.current;
+    if (!frame) return;
+    if (frame.requestFullscreen) frame.requestFullscreen();
+    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
   };
 
-  const releaseYear = (details?.release_date || details?.first_air_date || '').slice(0, 4);
-  const rating = details?.vote_average ? details.vote_average.toFixed(1) : null;
-  const genres = (details?.genres || []).map((g) => g.name);
+  const rating = details?.rating ? details.rating.toFixed(1) : null;
+  const genres = details?.genres ?? [];
+  const hasNextEpisode = seasonEpisodes.length === 0 || episodeNum < seasonEpisodes.length;
 
   return (
-    <div className={`watch-page ${theaterMode ? 'is-theater-mode' : ''}`}>
-      {/* Top Floating Control Bar */}
+    <div className="watch-page">
       <header className="watch-topbar">
-        <button
-          type="button"
-          onClick={() => navigate(detailPath)}
-          className="watch-back-btn"
-          title={`Back to ${isTv ? 'series' : 'movie'}`}
-        >
+        <button type="button" onClick={() => navigate(detailPath)} className="watch-back-btn">
           <ArrowLeft size={16} />
           <span>Back to {isTv ? 'Series' : 'Movie'}</span>
         </button>
@@ -197,18 +220,17 @@ export default function WatchPage() {
           {isTv && (
             <div className="watch-submeta">
               <span className="watch-ep-pill">S{seasonNum} · E{episodeNum}</span>
-              <span className="watch-ep-name">{episodeTitle}</span>
+              <span className="watch-ep-name">{currentEpisode?.name || `Episode ${episodeNum}`}</span>
             </div>
           )}
         </div>
 
         <div className="watch-controls-group">
-          {/* Episode Quick Switcher (Prev/Next) */}
           {isTv && (
             <div className="watch-episode-nav">
               <button
                 type="button"
-                onClick={handlePrevEpisode}
+                onClick={() => goToEpisode(episodeNum - 1)}
                 disabled={episodeNum <= 1}
                 className="watch-episode-nav-btn"
                 title="Previous Episode"
@@ -218,8 +240,8 @@ export default function WatchPage() {
               </button>
               <button
                 type="button"
-                onClick={handleNextEpisode}
-                disabled={seasonEpisodes.length > 0 && episodeNum >= seasonEpisodes.length}
+                onClick={() => goToEpisode(episodeNum + 1)}
+                disabled={!hasNextEpisode}
                 className="watch-episode-nav-btn"
                 title="Next Episode"
               >
@@ -229,24 +251,21 @@ export default function WatchPage() {
             </div>
           )}
 
-          {/* Server Selector Dropdown */}
           <div className="watch-server-picker">
             <Server size={14} className="watch-server-icon" />
             <select
-              value={selectedServer}
-              onChange={(e) => setSelectedServer(e.target.value)}
+              value={activeProviderId ?? ''}
+              onChange={(event) => setSelectedProvider(event.target.value)}
               className="watch-server-select"
               aria-label="Select streaming server"
+              disabled={providers.length === 0}
             >
-              {EMBED_SERVERS.map((server) => (
-                <option key={server.id} value={server.id}>
-                  {server.name}
-                </option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>{provider.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Watched Toggle (TV Shows) */}
           {isTv && (
             <button
               type="button"
@@ -259,26 +278,26 @@ export default function WatchPage() {
             </button>
           )}
 
-          {/* Bookmark Button */}
           <button
             type="button"
             onClick={() =>
               details &&
               toggleBookmark({
-                id,
-                type: mediaType,
+                id: Number(id),
+                type: isTv ? 'tv' : 'movie',
                 title,
-                poster_path: details.poster_path,
+                poster: details.poster,
+                year: details.year,
+                rating: details.rating,
               })
             }
-            className={`watch-icon-btn ${isBookmarked ? 'is-bookmarked' : ''}`}
-            title={isBookmarked ? 'Remove Bookmark' : 'Add to My List'}
-            aria-label={isBookmarked ? 'Remove Bookmark' : 'Add to My List'}
+            className={`watch-icon-btn ${bookmarked ? 'is-bookmarked' : ''}`}
+            title={bookmarked ? 'Remove Bookmark' : 'Add to My List'}
+            aria-label={bookmarked ? 'Remove Bookmark' : 'Add to My List'}
           >
-            <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} />
+            <Bookmark size={18} fill={bookmarked ? 'currentColor' : 'none'} />
           </button>
 
-          {/* Fullscreen Button */}
           <button
             type="button"
             onClick={handleFullscreen}
@@ -291,73 +310,75 @@ export default function WatchPage() {
         </div>
       </header>
 
-      {/* Main Theater Player Area */}
       <main className="watch-theater-area">
-        {/* Ambient Glow from Backdrop */}
-        {details?.backdrop_path && (
+        {details?.backdrop && (
           <div
             className="watch-ambient-glow"
-            style={{ backgroundImage: `url(${IMAGE_BASE_URL}/original${details.backdrop_path})` }}
+            style={{ backgroundImage: `url(${details.backdrop})` }}
             aria-hidden="true"
           />
         )}
 
         <div className="watch-theater-stage">
-          {/* Cinema Player Container */}
           <div className="watch-frame-box" ref={iframeRef}>
             {loading && (
               <div className="watch-loading-spinner" role="status">
                 <div className="watch-spinner" />
-                <p>Connecting to {activeServerObj.name}...</p>
+                <p>Preparing player...</p>
               </div>
             )}
 
-            <iframe
-              key={`${selectedServer}-${id}-${seasonNum}-${episodeNum}-${iframeKey}`}
-              src={iframeSrc}
-              title={`Watch ${title}`}
-              className="watch-iframe"
-              allowFullScreen
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              referrerPolicy="origin"
-            />
+            {!loading && !embedUrl && (
+              <div className="watch-loading-spinner" role="alert">
+                <p>No stream source is available for this title. Try another server.</p>
+              </div>
+            )}
+
+            {embedUrl && (
+              <iframe
+                key={`${activeProviderId}-${id}-${seasonNum}-${episodeNum}-${iframeKey}`}
+                src={embedUrl}
+                title={`Watch ${title}`}
+                className="watch-iframe"
+                allowFullScreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                referrerPolicy="origin"
+              />
+            )}
           </div>
 
-          {/* Quick Server Switcher Pills */}
-          <div className="watch-quick-servers-bar">
-            <span className="watch-servers-label">
-              <Server size={14} />
-              <span>Servers:</span>
-            </span>
+          {providers.length > 0 && (
+            <div className="watch-quick-servers-bar">
+              <span className="watch-servers-label">
+                <Server size={14} />
+                <span>Servers:</span>
+              </span>
 
-            <div className="watch-server-chips-list">
-              {EMBED_SERVERS.map((server) => {
-                const isActive = server.id === selectedServer;
-                return (
+              <div className="watch-server-chips-list">
+                {providers.map((provider) => (
                   <button
-                    key={server.id}
+                    key={provider.id}
                     type="button"
-                    onClick={() => setSelectedServer(server.id)}
-                    className={`watch-server-chip ${isActive ? 'is-active' : ''}`}
+                    onClick={() => setSelectedProvider(provider.id)}
+                    className={`watch-server-chip ${provider.id === activeProviderId ? 'is-active' : ''}`}
                   >
-                    <span className="watch-chip-name">{server.badge}</span>
+                    <span className="watch-chip-name">{provider.badge || provider.name}</span>
                   </button>
-                );
-              })}
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIframeKey((previous) => previous + 1)}
+                className="watch-reload-btn"
+                title="Reload Stream"
+              >
+                <RefreshCw size={14} />
+                <span>Reload</span>
+              </button>
             </div>
+          )}
 
-            <button
-              type="button"
-              onClick={handleReloadIframe}
-              className="watch-reload-btn"
-              title="Reload Stream"
-            >
-              <RefreshCw size={14} />
-              <span>Reload</span>
-            </button>
-          </div>
-
-          {/* TV Episodes Carousel (TV Series only) */}
           {isTv && seasonEpisodes.length > 0 && (
             <section className="watch-episodes-shelf" aria-labelledby="episodes-shelf-heading">
               <div className="watch-shelf-header">
@@ -366,34 +387,29 @@ export default function WatchPage() {
               </div>
 
               <div className="watch-episodes-carousel">
-                {seasonEpisodes.map((ep) => {
-                  const isCurrent = ep.episode_number === episodeNum;
-                  const epWatched = !!episodeProgress[getEpisodeProgressId(id, seasonNum, ep.episode_number)];
+                {seasonEpisodes.map((episode) => {
+                  const isCurrent = episode.episode_number === episodeNum;
+                  const watched = Boolean(episodeProgress[getEpisodeProgressId(id, seasonNum, episode.episode_number)]);
 
                   return (
                     <button
-                      key={ep.id}
+                      key={episode.id}
                       type="button"
-                      onClick={() => navigate(`/watch/tv/${id}?season=${seasonNum}&episode=${ep.episode_number}`)}
+                      onClick={() => goToEpisode(episode.episode_number)}
                       className={`watch-ep-card ${isCurrent ? 'is-current' : ''}`}
                     >
                       <div className="watch-ep-thumb-wrap">
-                        {ep.still_path ? (
-                          <img
-                            src={`${IMAGE_BASE_URL}/w300${ep.still_path}`}
-                            alt={ep.name}
-                            className="watch-ep-thumb"
-                            loading="lazy"
-                          />
+                        {episode.still ? (
+                          <img src={episode.still} alt={episode.name} className="watch-ep-thumb" loading="lazy" />
                         ) : (
-                          <div className="watch-ep-placeholder">Ep {ep.episode_number}</div>
+                          <div className="watch-ep-placeholder">Ep {episode.episode_number}</div>
                         )}
                         {isCurrent && (
                           <span className="watch-now-playing-badge">
                             <Play size={10} fill="currentColor" /> Playing
                           </span>
                         )}
-                        {epWatched && !isCurrent && (
+                        {watched && !isCurrent && (
                           <span className="watch-ep-watched-tag">
                             <CheckCircle size={12} /> Watched
                           </span>
@@ -402,10 +418,10 @@ export default function WatchPage() {
 
                       <div className="watch-ep-card-info">
                         <strong className="watch-ep-card-title">
-                          {ep.episode_number}. {ep.name || `Episode ${ep.episode_number}`}
+                          {episode.episode_number}. {episode.name}
                         </strong>
                         <span className="watch-ep-card-runtime">
-                          {ep.runtime ? `${ep.runtime}m` : '45m'}
+                          {episode.runtime ? `${episode.runtime}m` : '—'}
                         </span>
                       </div>
                     </button>
@@ -415,15 +431,15 @@ export default function WatchPage() {
             </section>
           )}
 
-          {/* Media Info & Actions Card */}
           {details && (
             <div className="watch-details-card">
-              {details.poster_path && (
+              {details.poster && (
                 <img
-                  src={`${IMAGE_BASE_URL}/w300${details.poster_path}`}
+                  src={details.poster}
                   alt={title}
                   className="watch-poster-thumb"
                   loading="lazy"
+                  decoding="async"
                 />
               )}
 
@@ -435,40 +451,34 @@ export default function WatchPage() {
                       {rating}
                     </span>
                   )}
-                  {releaseYear && (
+                  {details.year && details.year !== 'N/A' && (
                     <span className="watch-year-chip">
                       <Calendar size={13} />
-                      {releaseYear}
+                      {details.year}
                     </span>
                   )}
-                  <span className="watch-4k-chip">ULTRA HD 4K</span>
-                  {isTv && (
-                    <span className="watch-tv-badge">TV Series</span>
-                  )}
+                  {isTv && <span className="watch-tv-badge">TV Series</span>}
                 </div>
 
                 <h2 className="watch-card-title">{title}</h2>
 
                 {genres.length > 0 && (
                   <div className="watch-genres-row">
-                    {genres.map((g) => (
-                      <span key={g} className="watch-genre-pill">
-                        {g}
-                      </span>
+                    {genres.map((genre) => (
+                      <span key={genre} className="watch-genre-pill">{genre}</span>
                     ))}
                   </div>
                 )}
 
-                <p className="watch-overview-synopsis">
-                  {details.overview || 'No synopsis is available for this title.'}
-                </p>
+                <p className="watch-overview-synopsis">{details.overview}</p>
 
                 <div className="watch-card-actions">
-                  <Link to={trailerPath} className="watch-trailer-btn">
-                    <Film size={16} />
-                    <span>Watch Trailer</span>
-                  </Link>
-
+                  {details.trailer_key && (
+                    <Link to={trailerPath} className="watch-trailer-btn">
+                      <Film size={16} />
+                      <span>Watch Trailer</span>
+                    </Link>
+                  )}
                   <Link to={detailPath} className="watch-moreinfo-btn">
                     <span>Full Details & Cast</span>
                   </Link>
@@ -480,7 +490,9 @@ export default function WatchPage() {
       </main>
 
       <footer className="watch-footer-note">
-        <span>If playback freezes or shows an error, switch servers using the quick chips above or reload the stream.</span>
+        <span>
+          Playback is provided by third-party embed servers. If a stream fails, switch servers or reload it.
+        </span>
       </footer>
     </div>
   );

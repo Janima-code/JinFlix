@@ -1,61 +1,73 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  MediaStateContext,
+  getBookmarkKey,
+  getEpisodeProgressId,
+  normalizeBookmark,
+  normalizeBookmarks,
+} from './mediaState';
 
-const MediaStateContext = createContext();
+const BOOKMARKS_STORAGE_KEY = 'jinflix_bookmarks';
+const PROGRESS_STORAGE_KEY = 'jinflix_episode_progress';
 
-// ✅ Helper function exported directly for imports like in SeriesDetailPage.jsx
-export function getEpisodeProgressId(seriesId, seasonNumber, episodeNumber) {
-  return `${seriesId}_s${seasonNumber}_e${episodeNumber}`;
+function readStorage(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Failed to persist ${key}`, error);
+  }
+}
+
+/**
+ * Holds everything the app remembers between visits: the My List and per-episode
+ * watch progress. Both live in localStorage; there is no account system.
+ */
 export function MediaStateProvider({ children }) {
-  const [bookmarks, setBookmarks] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jinflix_bookmarks');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [bookmarks, setBookmarks] = useState(() =>
+    normalizeBookmarks(readStorage(BOOKMARKS_STORAGE_KEY, []))
+  );
+  const [episodeProgress, setEpisodeProgress] = useState(() =>
+    readStorage(PROGRESS_STORAGE_KEY, {})
+  );
 
-  const [episodeProgress, setEpisodeProgress] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jinflix_episode_progress');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  // Sync state to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem('jinflix_bookmarks', JSON.stringify(bookmarks));
-    } catch (e) {
-      console.error('Failed to save bookmarks to localStorage', e);
-    }
+    writeStorage(BOOKMARKS_STORAGE_KEY, bookmarks);
   }, [bookmarks]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('jinflix_episode_progress', JSON.stringify(episodeProgress));
-    } catch (e) {
-      console.error('Failed to save episode progress to localStorage', e);
-    }
+    writeStorage(PROGRESS_STORAGE_KEY, episodeProgress);
   }, [episodeProgress]);
 
-  // Toggle bookmark function
-  const toggleBookmark = (item) => {
-    setBookmarks((prev) => {
-      const exists = prev.some((b) => b.id === item.id);
-      if (exists) {
-        return prev.filter((b) => b.id !== item.id);
-      }
-      return [...prev, item];
-    });
-  };
+  const toggleBookmark = useCallback((item) => {
+    const bookmark = normalizeBookmark(item);
+    const key = getBookmarkKey(bookmark);
+    if (!key) return;
 
-  // Toggle or update episode watched status
-  const setEpisodeWatched = (episodeDetails, isWatched) => {
+    setBookmarks((prev) => {
+      const exists = prev.some((b) => getBookmarkKey(b) === key);
+      if (exists) return prev.filter((b) => getBookmarkKey(b) !== key);
+      return [...prev, bookmark];
+    });
+  }, []);
+
+  const isBookmarked = useCallback(
+    (item) => {
+      const key = getBookmarkKey(normalizeBookmark(item));
+      return key ? bookmarks.some((b) => getBookmarkKey(b) === key) : false;
+    },
+    [bookmarks]
+  );
+
+  const setEpisodeWatched = useCallback((episodeDetails, isWatched) => {
     const key = getEpisodeProgressId(
       episodeDetails.seriesId,
       episodeDetails.seasonNumber,
@@ -63,38 +75,33 @@ export function MediaStateProvider({ children }) {
     );
 
     setEpisodeProgress((prev) => {
-      const updated = { ...prev };
-      if (isWatched) {
-        updated[key] = {
-          ...episodeDetails,
-          updatedAt: new Date().toISOString(),
-        };
-      } else {
-        delete updated[key];
+      if (!isWatched) {
+        if (!(key in prev)) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
       }
-      return updated;
+      return {
+        ...prev,
+        [key]: { ...episodeDetails, updatedAt: new Date().toISOString() },
+      };
     });
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      bookmarks,
+      toggleBookmark,
+      isBookmarked,
+      episodeProgress,
+      setEpisodeWatched,
+    }),
+    [bookmarks, toggleBookmark, isBookmarked, episodeProgress, setEpisodeWatched]
+  );
 
   return (
-    <MediaStateContext.Provider
-      value={{
-        bookmarks,
-        toggleBookmark,
-        episodeProgress,
-        setEpisodeWatched,
-        getEpisodeProgressId,
-      }}
-    >
+    <MediaStateContext.Provider value={value}>
       {children}
     </MediaStateContext.Provider>
   );
-}
-
-export function useMediaState() {
-  const context = useContext(MediaStateContext);
-  if (!context) {
-    throw new Error('useMediaState must be used within a MediaStateProvider');
-  }
-  return context;
 }

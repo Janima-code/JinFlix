@@ -1,9 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Homepage from './pages/Homepage';
 import MovieDetailPage from './pages/MovieDetailPage';
 import SeriesDetailPage from './pages/SeriesDetailPage';
 import TrailerPage from './pages/TrailerPage';
-import WatchPage from './pages/WatchPage'; // New standalone watch page
+import WatchPage from './pages/WatchPage';
 import MyListPage from './pages/MyListPage';
 import { MediaStateProvider } from './context/MediaStateContext';
 
@@ -16,7 +16,7 @@ export default function App() {
         <Route path="/series" element={<Homepage mediaType="tv" />} />
 
         {/* Detail Routes */}
-        <Route path="/movie/:id" element={<MovieDetailPage mediaType="movie" />} />
+        <Route path="/movie/:id" element={<MovieDetailPage />} />
         <Route path="/series/:id" element={<SeriesDetailPage />} />
 
         {/* Standalone Player Routes */}
@@ -26,7 +26,6 @@ export default function App() {
         {/* My List */}
         <Route path="/my-list" element={<MyListPage />} />
       </Routes>
-      </MediaStateProvider>
-    
+    </MediaStateProvider>
   );
 }

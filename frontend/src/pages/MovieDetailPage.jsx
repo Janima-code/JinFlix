@@ -1,48 +1,75 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaStar } from 'react-icons/fa';
 import { Play, Film, Bookmark, ArrowLeft } from 'lucide-react';
-import { useMediaState } from '../context/MediaStateContext';
+import { useMediaState } from '../context/mediaState';
+import { getMediaDetails } from '../api/media';
+import { createRequestGuard, isAbortError } from '../api/requestGuard';
+import usePageMeta from '../hooks/usePageMeta';
 import './MovieDetailPage.css';
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-const BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const FALLBACK_POSTER = 'https://placehold.co/500x750/17171d/ffffff?text=Movie';
 const FALLBACK_PROFILE = 'https://placehold.co/180x220/17171d/ffffff?text=Person';
+
+/**
+ * Accepts the numeric `runtime_minutes` the backend provides, and still copes
+ * with the pre-migration display string ("139 min", "42 min/ep") that older
+ * cached payloads and `src/Movies.json` carry.
+ */
+function formatRuntime(minutes) {
+  const totalMinutes = typeof minutes === 'number' ? minutes : Number.parseInt(minutes, 10);
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return null;
+  const hours = Math.floor(totalMinutes / 60);
+  const remainder = totalMinutes % 60;
+  if (hours === 0) return `${remainder}m`;
+  return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
+}
 
 export default function MovieDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const { bookmarks, toggleBookmark } = useMediaState();
-  const isBookmarked = bookmarks?.some((b) => String(b.id) === String(id));
+  const { isBookmarked, toggleBookmark } = useMediaState();
+  const bookmarked = isBookmarked({ id, type: 'movie' });
+
+  usePageMeta(
+    movie ? `${movie.title} (${movie.year}) | JinFlix` : 'Movie Details | JinFlix',
+    movie?.overview || 'Explore movie details, cast, and streaming options on JinFlix.'
+  );
+
+  const guard = useMemo(() => createRequestGuard(), []);
+  useEffect(() => () => guard.abort(), [guard]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    async function fetchMovieDetails() {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `${BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos`,
-          { signal: controller.signal }
-        );
-        const data = await res.json();
-        setMovie(data.success === false ? null : data);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error('Failed to fetch movie details:', err);
-          setMovie(null);
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-    if (id) fetchMovieDetails();
-    return () => controller.abort();
-  }, [id]);
+    if (!id) return undefined;
+
+    const signal = guard.start();
+    let active = true;
+
+    setLoading(true);
+    setError('');
+    setMovie(null);
+
+    getMediaDetails('movie', id, { signal })
+      .then((data) => {
+        if (active) setMovie(data);
+      })
+      .catch((err) => {
+        if (!active || isAbortError(err)) return;
+        setError('We could not load this movie.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, guard]);
 
   if (loading) {
     return (
@@ -55,31 +82,24 @@ export default function MovieDetailPage() {
     );
   }
 
-  if (!movie) {
+  if (error || !movie) {
     return (
       <main className="movie-detail-page">
         <div className="movie-state" role="alert">
-          <p>We couldn't load this movie.</p>
-          <button type="button" className="movie-btn-secondary" onClick={() => navigate('/')}>
-            Back to home
-          </button>
+          <p>{error || 'This movie is unavailable.'}</p>
+          <Link to="/movies" className="movie-btn-secondary">Back to movies</Link>
         </div>
       </main>
     );
   }
 
-  const hours = Math.floor((movie.runtime || 0) / 60);
-  const minutes = (movie.runtime || 0) % 60;
-  const year = movie.release_date?.slice(0, 4);
-  const director = movie.credits?.crew?.find((c) => c.job === 'Director')?.name;
-  const cast = (movie.credits?.cast || []).slice(0, 12);
-  const hasTrailer = movie.videos?.results?.some((v) => v.site === 'YouTube');
+  const runtime = formatRuntime(movie.runtime_minutes ?? movie.runtime);
   const language = movie.original_language
-    ? new Intl.DisplayNames(['en'], { type: 'language' }).of(movie.original_language)
+    ? new Intl.DisplayNames(['en'], { type: 'language' }).of(movie.original_language.toLowerCase())
     : null;
 
   const facts = [
-    director && { label: 'Director', value: director },
+    movie.crew?.Director && { label: 'Director', value: movie.crew.Director },
     movie.status && { label: 'Status', value: movie.status },
     language && { label: 'Language', value: language },
   ].filter(Boolean);
@@ -88,16 +108,12 @@ export default function MovieDetailPage() {
     <main className="movie-detail-page">
       <section
         className="movie-hero"
-        style={{
-          backgroundImage: movie.backdrop_path
-            ? `url(${IMAGE_BASE_URL}/w1280${movie.backdrop_path})`
-            : 'none',
-        }}
+        style={movie.backdrop ? { backgroundImage: `url(${movie.backdrop})` } : undefined}
       >
         <div className="movie-hero-content">
           <div className="movie-poster-wrap">
             <img
-              src={movie.poster_path ? `${IMAGE_BASE_URL}/w500${movie.poster_path}` : FALLBACK_POSTER}
+              src={movie.poster || FALLBACK_POSTER}
               alt={`${movie.title} poster`}
               className="movie-poster"
               loading="eager"
@@ -111,20 +127,31 @@ export default function MovieDetailPage() {
             {movie.tagline && <p className="movie-tagline">{movie.tagline}</p>}
 
             <div className="movie-meta">
-              {year && <span className="movie-meta-pill">{year}</span>}
-              {movie.runtime > 0 && <span className="movie-meta-pill">{`${hours}h ${minutes}m`}</span>}
+              {movie.year && movie.year !== 'N/A' && (
+                <span className="movie-meta-pill">{movie.year}</span>
+              )}
+              {runtime && <span className="movie-meta-pill">{runtime}</span>}
               <span className="movie-meta-pill">
                 <FaStar className="star-icon" />
-                {movie.vote_average ? `${movie.vote_average.toFixed(1)}/10` : 'N/A'}
+                {movie.rating ? `${movie.rating.toFixed(1)}/10` : 'N/A'}
               </span>
             </div>
 
-            <p className="movie-overview">{movie.overview || 'No movie overview is available.'}</p>
+            <p className="movie-overview">{movie.overview}</p>
 
-            {movie.genres?.length > 0 && (
+            {movie.genres.length > 0 && (
               <div className="movie-genres">
-                {movie.genres.map((g) => (
-                  <span key={g.id}>{g.name}</span>
+                {movie.genres.map((genre) => (
+                  <span key={genre}>{genre}</span>
+                ))}
+              </div>
+            )}
+
+            {movie.legal_providers.length > 0 && (
+              <div className="movie-genres">
+                <span className="movie-provider-label">Streaming on</span>
+                {movie.legal_providers.map((provider) => (
+                  <span key={provider.id}>{provider.name}</span>
                 ))}
               </div>
             )}
@@ -133,17 +160,17 @@ export default function MovieDetailPage() {
               <button
                 type="button"
                 className="movie-btn-primary"
-                onClick={() => navigate(`/watch/movie/${id}`)}
+                onClick={() => navigate(`/watch/movie/${movie.tmdb_id}`)}
               >
                 <Play size={18} fill="currentColor" />
                 <span>Watch Now</span>
               </button>
 
-              {hasTrailer && (
+              {movie.trailer_key && (
                 <button
                   type="button"
                   className="movie-btn-secondary"
-                  onClick={() => navigate(`/trailer/movie/${id}`)}
+                  onClick={() => navigate(`/trailer/movie/${movie.tmdb_id}`)}
                 >
                   <Film size={18} />
                   <span>Watch Trailer</span>
@@ -152,20 +179,22 @@ export default function MovieDetailPage() {
 
               <button
                 type="button"
-                className={`movie-btn-icon ${isBookmarked ? 'is-bookmarked' : ''}`}
+                className={`movie-btn-icon ${bookmarked ? 'is-bookmarked' : ''}`}
                 onClick={() =>
                   toggleBookmark({
-                    id: movie.id,
+                    id: movie.tmdb_id,
                     type: 'movie',
                     title: movie.title,
-                    poster_path: movie.poster_path,
+                    poster: movie.poster,
+                    year: movie.year,
+                    rating: movie.rating,
                   })
                 }
-                aria-pressed={isBookmarked}
-                aria-label={isBookmarked ? 'Remove from My List' : 'Add to My List'}
-                title={isBookmarked ? 'Remove from My List' : 'Add to My List'}
+                aria-pressed={bookmarked}
+                aria-label={bookmarked ? 'Remove from My List' : 'Add to My List'}
+                title={bookmarked ? 'Remove from My List' : 'Add to My List'}
               >
-                <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} />
+                <Bookmark size={18} fill={bookmarked ? 'currentColor' : 'none'} />
               </button>
 
               <button type="button" className="movie-back-link" onClick={() => navigate(-1)}>
@@ -180,15 +209,13 @@ export default function MovieDetailPage() {
       <section className="movie-section" aria-labelledby="movie-story-heading">
         <h2 id="movie-story-heading">Story</h2>
         <div className="movie-story-grid">
-          <p className="movie-story-text">
-            {movie.overview || 'No description is available yet.'}
-          </p>
+          <p className="movie-story-text">{movie.overview}</p>
           {facts.length > 0 && (
             <dl className="movie-facts">
-              {facts.map((f) => (
-                <div key={f.label}>
-                  <dt>{f.label}</dt>
-                  <dd>{f.value}</dd>
+              {facts.map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
                 </div>
               ))}
             </dl>
@@ -196,21 +223,21 @@ export default function MovieDetailPage() {
         </div>
       </section>
 
-      {cast.length > 0 && (
+      {movie.cast.length > 0 && (
         <section className="movie-section" aria-labelledby="movie-cast-heading">
           <h2 id="movie-cast-heading">Cast</h2>
           <ul className="movie-cast-row">
-            {cast.map((person) => (
+            {movie.cast.map((person) => (
               <li key={person.id} className="movie-cast-card">
                 <img
-                  src={person.profile_path ? `${IMAGE_BASE_URL}/w185${person.profile_path}` : FALLBACK_PROFILE}
+                  src={person.profile || FALLBACK_PROFILE}
                   alt={person.name}
                   loading="lazy"
                   decoding="async"
                 />
                 <div>
                   <h3>{person.name}</h3>
-                  <p>{person.character || 'Cast member'}</p>
+                  <p>{person.character}</p>
                 </div>
               </li>
             ))}

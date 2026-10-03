@@ -1,24 +1,12 @@
 import { Link } from 'react-router-dom';
-import { useMediaState } from '../context/MediaStateContext';
+import { useMediaState } from '../context/mediaState';
+import { toRouteSegment } from '../api/media';
 import './MyListPage.css';
 
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 const FALLBACK_POSTER = 'https://placehold.co/300x450/17171d/ffffff?text=No+Poster';
 
 export default function MyListPage() {
   const { bookmarks, toggleBookmark } = useMediaState();
-
-  const resolveRoute = (item) => {
-    if (item.type === 'tv' || item.type === 'series') return `/series/${item.id}`;
-    return `/movie/${item.id}`;
-  };
-
-  const getPoster = (item) => {
-    if (!item.poster_path) return FALLBACK_POSTER;
-    // poster_path may already be a full URL (from HeroBanner watchlist adds)
-    if (item.poster_path.startsWith('http')) return item.poster_path;
-    return `${IMAGE_BASE_URL}${item.poster_path}`;
-  };
 
   return (
     <div className="my-list-page">
@@ -41,34 +29,35 @@ export default function MyListPage() {
           </div>
         ) : (
           <ul className="my-list-grid" role="list">
-            {bookmarks.map((item) => (
-              <li key={`${item.type}-${item.id}`} className="my-list-card">
-                <Link to={resolveRoute(item)} className="my-list-card-link">
-                  <div className="my-list-poster-wrap">
-                    <img
-                      src={getPoster(item)}
-                      alt={item.title || 'Poster'}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <span className="my-list-type-badge">
-                      {item.type === 'tv' || item.type === 'series' ? 'TV' : 'Film'}
-                    </span>
-                  </div>
-                  <div className="my-list-card-info">
-                    <h3 className="my-list-card-title">{item.title || 'Untitled'}</h3>
-                  </div>
-                </Link>
-                <button
-                  className="my-list-remove-btn"
-                  onClick={() => toggleBookmark(item)}
-                  aria-label={`Remove ${item.title} from My List`}
-                  title="Remove from My List"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
+            {bookmarks.map((item) => {
+              const isSeries = item.type === 'tv' || item.type === 'series';
+              const poster = item.poster || FALLBACK_POSTER;
+
+              return (
+                <li key={`${item.type}-${item.id}`} className="my-list-card">
+                  <Link to={`/${toRouteSegment(item.type)}/${item.id}`} className="my-list-card-link">
+                    <div className="my-list-poster-wrap">
+                      <img src={poster} alt={item.title || 'Poster'} loading="lazy" decoding="async" />
+                      <span className="my-list-type-badge">{isSeries ? 'TV' : 'Film'}</span>
+                    </div>
+                    <div className="my-list-card-info">
+                      <h3 className="my-list-card-title">{item.title || 'Untitled'}</h3>
+                      {item.year && item.year !== 'N/A' && (
+                        <span className="my-list-card-year">{item.year}</span>
+                      )}
+                    </div>
+                  </Link>
+                  <button
+                    className="my-list-remove-btn"
+                    onClick={() => toggleBookmark(item)}
+                    aria-label={`Remove ${item.title} from My List`}
+                    title="Remove from My List"
+                  >
+                    ✕
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

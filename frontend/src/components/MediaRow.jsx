@@ -10,6 +10,7 @@ export default function MediaRow({
   loading = false,
   autoScroll = true,
   autoScrollInterval = 3800,
+  emptyMessage = 'No titles found.',
 }) {
   const rowRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -80,12 +81,12 @@ export default function MediaRow({
           onTouchEnd={() => setIsPaused(false)}
         >
           {items.map((item) => (
-            <MediaCard key={item.id} item={item} />
+            <MediaCard key={`${item.media_type}-${item.id}`} item={item} />
           ))}
         </div>
       ) : (
         /* 3. Empty State */
-        <p className="empty-state">No titles found.</p>
+        <p className="empty-state">{emptyMessage}</p>
       )}
     </section>
   );

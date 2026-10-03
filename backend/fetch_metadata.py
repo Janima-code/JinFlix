@@ -1,16 +1,16 @@
 """
 fetch_metadata.py
 -----------------
-CLI utility to fetch metadata from The Movie Database (TMDb) API.
-Can fetch movie/series details, trending lists, search queries, and
-optionally export data to a JSON file (such as Movies.json).
+CLI utility over the same TMDb service the API uses. Useful for inspecting
+normalized output or regenerating the frontend's static fallback catalog.
 
 Usage examples:
-    python fetch_metadata.py --type movie --id 550
-    python fetch_metadata.py --type tv --id 1399
+    python fetch_metadata.py --id 550
+    python fetch_metadata.py --type tv --id 1399 --season 1
     python fetch_metadata.py --trending --limit 10
     python fetch_metadata.py --trending --export ../frontend/src/Movies.json
     python fetch_metadata.py --search "Interstellar"
+    python fetch_metadata.py --catalog trending_movies,popular_series
 """
 
 import argparse
@@ -18,97 +18,118 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+
 import tmdb_service
+from tmdb_service import TmdbError
 
 
-async def main():
-    parser = argparse.ArgumentParser(description="Fetch metadata using TMDb API")
-    parser.add_argument("--id", type=int, help="TMDb ID of the movie or TV show")
-    parser.add_argument(
-        "--type",
-        choices=["movie", "tv", "series"],
-        default="movie",
-        help="Media type: 'movie' or 'tv'",
-    )
-    parser.add_argument("--season", type=int, help="TV season number to fetch episodes for")
-    parser.add_argument("--trending", action="store_true", help="Fetch currently trending titles")
-    parser.add_argument("--search", type=str, help="Search query to search on TMDb")
-    parser.add_argument("--limit", type=int, default=10, help="Limit number of items for trending/search")
-    parser.add_argument("--export", type=str, help="Path to export JSON output (e.g., ../frontend/src/Movies.json)")
-    parser.add_argument("--pretty", action="store_true", default=True, help="Pretty print JSON output")
+def _summarize(title: dict) -> None:
+    print("\n" + "=" * 60)
+    print(f"Title:     {title.get('title')}")
+    print(f"Type:      {title.get('media_type')}")
+    print(f"Year:      {title.get('year')}")
+    print(f"Rating:    {title.get('rating')}/10 ({title.get('vote_count')} votes)")
+    print(f"Genres:    {', '.join(title.get('genres') or []) or 'None'}")
+    print(f"Trailer:   {title.get('trailer_url') or 'None'}")
+    cast = title.get("cast") or []
+    if cast:
+        print(f"Top Cast:  {', '.join(member['name'] for member in cast[:5])}")
+    providers = title.get("legal_providers") or []
+    if providers:
+        print(f"Streaming: {', '.join(p['name'] for p in providers)}")
+    print("=" * 60 + "\n")
 
-    args = parser.parse_args()
 
-    if not args.id and not args.trending and not args.search:
-        parser.print_help()
-        sys.exit(1)
+def _summarize_list(items: list) -> None:
+    print(f"\n[+] {len(items)} title(s):")
+    for index, item in enumerate(items, start=1):
+        print(f"  {index:>2}. {item.get('title')} ({item.get('year')}) - {item.get('rating')}/10")
 
-    result_data = None
 
-    if args.id:
+async def run(args: argparse.Namespace) -> int:
+    result = None
+
+    if args.id is not None:
         if args.season is not None:
-            print(f"[*] Fetching Season {args.season} metadata for TV series {args.id}...")
-            result_data = await tmdb_service.get_season_details(args.id, args.season)
+            print(f"[*] Season {args.season} of TV id {args.id}...")
+            result = await tmdb_service.get_season_details(args.id, args.season)
         else:
-            print(f"[*] Fetching metadata for {args.type} ID {args.id}...")
-            result_data = await tmdb_service.get_media_details(args.type, args.id)
+            print(f"[*] {args.type} id {args.id}...")
+            result = await tmdb_service.get_media_details(args.type, args.id)
+
+    elif args.catalog:
+        rows = [row.strip() for row in args.catalog.split(",") if row.strip()]
+        print(f"[*] Fetching catalog rows: {', '.join(rows)}")
+        result = await tmdb_service.get_catalog_rows(rows)
 
     elif args.trending:
-        print(f"[*] Fetching trending {args.type} catalog...")
-        trending_list = await tmdb_service.get_trending(args.type, "week")
-        limited = trending_list[:args.limit]
-        
-        # If exporting or detailed view requested, fetch full details for top items
-        print(f"[*] Fetching full metadata for {len(limited)} trending titles...")
-        detailed_items = []
+        print(f"[*] Fetching trending {args.type} titles...")
+        trending = await tmdb_service.get_trending(args.type, "week")
+        limited = trending[: args.limit]
+        print(f"[*] Hydrating {len(limited)} title(s)...")
+        detailed = []
         for item in limited:
-            m_type = item.get("media_type") or args.type
-            m_id = item.get("id")
             try:
-                full_item = await tmdb_service.get_media_details(m_type, m_id)
-                if full_item:
-                    detailed_items.append(full_item)
-            except Exception as e:
-                print(f"[!] Error fetching {m_type} {m_id}: {e}")
-
-        result_data = detailed_items
+                detailed.append(
+                    await tmdb_service.get_media_details(
+                        item["media_type"], item["tmdb_id"]
+                    )
+                )
+            except TmdbError as error:
+                print(f"[!] Skipped {item['media_type']} {item['tmdb_id']}: {error}")
+        result = detailed
 
     elif args.search:
         print(f"[*] Searching TMDb for '{args.search}'...")
-        results = await tmdb_service.search_media(args.search, args.type)
-        result_data = results[:args.limit]
+        result = (await tmdb_service.search_media(args.search, args.type))[: args.limit]
 
-    if not result_data:
-        print("[!] No data returned from TMDb API.")
-        sys.exit(1)
+    if not result:
+        print("[!] No data returned.")
+        return 1
 
-    # Print summary to console
-    if isinstance(result_data, dict):
-        print("\n" + "=" * 50)
-        print(f"Title:       {result_data.get('title')}")
-        print(f"Year:        {result_data.get('year')}")
-        print(f"Rating:      {result_data.get('rating')}/10 ({result_data.get('vote_count')} votes)")
-        print(f"Genres:      {result_data.get('genres_formatted')}")
-        print(f"Trailer:     {result_data.get('trailer_url') or 'None'}")
-        if result_data.get("cast"):
-            cast_names = ", ".join([c["name"] for c in result_data["cast"][:5]])
-            print(f"Top Cast:    {cast_names}")
-        print(f"Overview:    {result_data.get('overview')[:180]}...")
-        print("=" * 50 + "\n")
-    elif isinstance(result_data, list):
-        print(f"\n[+] Successfully fetched {len(result_data)} titles:")
-        for idx, item in enumerate(result_data, start=1):
-            print(f"  {idx}. {item.get('title')} ({item.get('year')}) - Rating: {item.get('rating')}/10")
-        print()
+    if isinstance(result, dict):
+        _summarize(result)
+    else:
+        _summarize_list(result)
 
-    # Export to JSON if specified
     if args.export:
         export_path = Path(args.export).resolve()
         export_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(export_path, "w", encoding="utf-8") as f:
-            json.dump(result_data, f, indent=2, ensure_ascii=False)
-        print(f"[+] Metadata successfully exported to: {export_path}")
+        export_path.write_text(
+            json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        print(f"[+] Exported to {export_path}")
+
+    return 0
+
+
+async def main() -> int:
+    parser = argparse.ArgumentParser(description="Fetch metadata using TMDb API")
+    parser.add_argument("--id", type=int, help="TMDb id of the movie or TV show")
+    parser.add_argument(
+        "--type",
+        choices=["movie", "tv", "series", "all"],
+        default="movie",
+        help="Media type filter",
+    )
+    parser.add_argument("--season", type=int, help="Fetch episodes for a TV season")
+    parser.add_argument("--trending", action="store_true", help="Fetch trending titles")
+    parser.add_argument("--catalog", type=str, help="Comma-separated catalog rows")
+    parser.add_argument("--search", type=str, help="Search query")
+    parser.add_argument("--limit", type=int, default=10, help="Max titles for trending/search")
+    parser.add_argument("--export", type=str, help="Write JSON output to this path")
+    args = parser.parse_args()
+
+    if args.id is None and not (args.trending or args.search or args.catalog):
+        parser.print_help()
+        return 1
+
+    try:
+        return await run(args)
+    except TmdbError as error:
+        print(f"[!] {error}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))
